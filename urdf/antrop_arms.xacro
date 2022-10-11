@@ -1,0 +1,356 @@
+<?xml version="1.0" ?>
+<robot name="antrop_arms" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:include filename="$(find antrop_arms_description)/urdf/materials.xacro" />
+<xacro:include filename="$(find antrop_arms_description)/urdf/antrop_arms.trans" />
+<xacro:include filename="$(find antrop_arms_description)/urdf/antrop_arms.gazebo" />
+<link name="base_link">
+  <inertial>
+    <origin xyz="1.066898751021674e-15 6.668117193885462e-17 -0.0018137714290285523" rpy="0 0 0"/>
+    <mass value="17.13115280088791"/>
+    <inertia ixx="0.071673" iyy="0.032901" izz="0.085379" ixy="0.0" iyz="0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="Shoulder_Yaw_Structure_v1_1">
+  <inertial>
+    <origin xyz="-0.021135735062036764 -8.326672684688674e-16 -0.04093696874713262" rpy="0 0 0"/>
+    <mass value="0.13081573332382615"/>
+    <inertia ixx="9.8e-05" iyy="0.000152" izz="6.3e-05" ixy="-0.0" iyz="0.0" ixz="1e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.021 -0.18 0.0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Shoulder_Yaw_Structure_v1_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.021 -0.18 0.0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Shoulder_Yaw_Structure_v1_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="Servo_Herkulex_v1_1">
+  <inertial>
+    <origin xyz="-0.015296200031691265 -5.551115123125783e-17 -0.02073708217051337" rpy="0 0 0"/>
+    <mass value="0.5836410679799175"/>
+    <inertia ixx="0.00013" iyy="0.000221" izz="0.000207" ixy="0.0" iyz="0.0" ixz="-2e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0 -0.18 0.075" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Servo_Herkulex_v1_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.0 -0.18 0.075" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Servo_Herkulex_v1_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="Shoulder_Yaw_Transmission_v1_1">
+  <inertial>
+    <origin xyz="-1.8166024240429124e-14 -5.551115123125783e-17 -0.023088428353467902" rpy="0 0 0"/>
+    <mass value="0.7529944150379378"/>
+    <inertia ixx="0.000272" iyy="0.000272" izz="0.000239" ixy="-0.0" iyz="-0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0155 -0.18 0.115" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Shoulder_Yaw_Transmission_v1_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.0155 -0.18 0.115" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Shoulder_Yaw_Transmission_v1_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="elbow_left_link_1">
+  <inertial>
+    <origin xyz="-1.899869150889799e-14 -0.00021228541858173133 -0.11684928259378977" rpy="0 0 0"/>
+    <mass value="0.6214584962841803"/>
+    <inertia ixx="0.000538" iyy="0.000531" izz="0.000118" ixy="0.0" iyz="-3e-06" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0155 -0.18 0.163" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/elbow_left_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.0155 -0.18 0.163" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/elbow_left_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="Shoulder_Yaw_Structure_v1__1__1">
+  <inertial>
+    <origin xyz="-0.021135735062036733 -9.43689570931383e-16 -0.040936968747132534" rpy="0 0 0"/>
+    <mass value="0.13081573332382615"/>
+    <inertia ixx="9.8e-05" iyy="0.000152" izz="6.3e-05" ixy="-0.0" iyz="0.0" ixz="1e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.021 0.18 0.0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Shoulder_Yaw_Structure_v1__1__1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.021 0.18 0.0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Shoulder_Yaw_Structure_v1__1__1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="Servo_Herkulex_v1__1__1">
+  <inertial>
+    <origin xyz="-0.015296200031691375 1.6653345369377348e-16 -0.020737082170513232" rpy="0 0 0"/>
+    <mass value="0.5836410679799175"/>
+    <inertia ixx="0.00013" iyy="0.000221" izz="0.000207" ixy="0.0" iyz="0.0" ixz="-2e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0 0.18 0.075" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Servo_Herkulex_v1__1__1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.0 0.18 0.075" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Servo_Herkulex_v1__1__1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="Shoulder_Yaw_Transmission_v1__1__1">
+  <inertial>
+    <origin xyz="-1.8197249262996706e-14 1.942890293094024e-16 -0.023088428353467597" rpy="0 0 0"/>
+    <mass value="0.7529944150379378"/>
+    <inertia ixx="0.000272" iyy="0.000272" izz="0.000239" ixy="-0.0" iyz="0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0155 0.18 0.115" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Shoulder_Yaw_Transmission_v1__1__1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.0155 0.18 0.115" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/Shoulder_Yaw_Transmission_v1__1__1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="elbow_right_link_1">
+  <inertial>
+    <origin xyz="-1.675569405445998e-14 0.0002122854185845624 -0.11684928259381297" rpy="0 0 0"/>
+    <mass value="0.6214584962841804"/>
+    <inertia ixx="0.000538" iyy="0.000531" izz="0.000118" ixy="-0.0" iyz="3e-06" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0155 0.18 0.163" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/elbow_right_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.0155 0.18 0.163" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/elbow_right_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="shoulder_right_link_1">
+  <inertial>
+    <origin xyz="-0.0002500317321433487 -0.03591809092030432 -0.013543028885077014" rpy="0 0 0"/>
+    <mass value="0.6591423872621155"/>
+    <inertia ixx="0.000324" iyy="0.000242" izz="0.000235" ixy="9e-06" iyz="-3.6e-05" ixz="2e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0 0.14 -0.0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/shoulder_right_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.0 0.14 -0.0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/shoulder_right_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="shoulder_left_link_1">
+  <inertial>
+    <origin xyz="-0.0002500317321533693 0.035918090920304124 -0.013543028885077059" rpy="0 0 0"/>
+    <mass value="0.6591423872621155"/>
+    <inertia ixx="0.000324" iyy="0.000242" izz="0.000235" ixy="-9e-06" iyz="3.6e-05" ixz="2e-06"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0 -0.14 -0.0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/shoulder_left_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.0 -0.14 -0.0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/shoulder_left_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="forearm_left_link_1">
+  <inertial>
+    <origin xyz="-2.4015511801422917e-14 -0.020000000000116203 -0.14499270392199487" rpy="0 0 0"/>
+    <mass value="0.20799291557495453"/>
+    <inertia ixx="0.001901" iyy="0.001879" izz="3.1e-05" ixy="-0.0" iyz="0.0" ixz="-0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0155 0.16 0.3025" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/forearm_left_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.0155 0.16 0.3025" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/forearm_left_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="forearm_right_link_1">
+  <inertial>
+    <origin xyz="-2.80782341821606e-14 -0.020000000000115925 -0.14499270392199565" rpy="0 0 0"/>
+    <mass value="0.20799291557495453"/>
+    <inertia ixx="0.001901" iyy="0.001879" izz="3.1e-05" ixy="-0.0" iyz="0.0" ixz="-0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.0155 -0.2 0.3025" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/forearm_right_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.0155 -0.2 0.3025" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://antrop_arms_description/meshes/forearm_right_link_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<joint name="base_shoulder_left_joint" type="continuous">
+  <origin xyz="0.021 0.04 -0.0" rpy="0 0 0"/>
+  <parent link="shoulder_left_link_1"/>
+  <child link="Shoulder_Yaw_Structure_v1_1"/>
+  <axis xyz="1.0 -0.0 0.0"/>
+</joint>
+
+<joint name="Rigid3" type="fixed">
+  <origin xyz="-0.021 0.0 -0.075" rpy="0 0 0"/>
+  <parent link="Shoulder_Yaw_Structure_v1_1"/>
+  <child link="Servo_Herkulex_v1_1"/>
+</joint>
+
+<joint name="Rigid5" type="fixed">
+  <origin xyz="-0.0155 0.0 -0.04" rpy="0 0 0"/>
+  <parent link="Servo_Herkulex_v1_1"/>
+  <child link="Shoulder_Yaw_Transmission_v1_1"/>
+</joint>
+
+<joint name="shoulder_elbow_left_joint" type="continuous">
+  <origin xyz="0.0 0.0 -0.048" rpy="0 0 0"/>
+  <parent link="Shoulder_Yaw_Transmission_v1_1"/>
+  <child link="elbow_left_link_1"/>
+  <axis xyz="0.0 0.0 1.0"/>
+</joint>
+
+<joint name="base_shoulder_right_joint" type="continuous">
+  <origin xyz="0.021 -0.04 -0.0" rpy="0 0 0"/>
+  <parent link="shoulder_right_link_1"/>
+  <child link="Shoulder_Yaw_Structure_v1__1__1"/>
+  <axis xyz="1.0 -0.0 0.0"/>
+</joint>
+
+<joint name="Rigid9" type="fixed">
+  <origin xyz="-0.021 0.0 -0.075" rpy="0 0 0"/>
+  <parent link="Shoulder_Yaw_Structure_v1__1__1"/>
+  <child link="Servo_Herkulex_v1__1__1"/>
+</joint>
+
+<joint name="Rigid10" type="fixed">
+  <origin xyz="-0.0155 0.0 -0.04" rpy="0 0 0"/>
+  <parent link="Servo_Herkulex_v1__1__1"/>
+  <child link="Shoulder_Yaw_Transmission_v1__1__1"/>
+</joint>
+
+<joint name="shoulder_elbow_right_joint" type="continuous">
+  <origin xyz="0.0 0.0 -0.048" rpy="0 0 0"/>
+  <parent link="Shoulder_Yaw_Transmission_v1__1__1"/>
+  <child link="elbow_right_link_1"/>
+  <axis xyz="0.0 -0.0 1.0"/>
+</joint>
+
+<joint name="base_shoulder_right_fixed_joint" type="fixed">
+  <origin xyz="0.0 -0.14 0.0" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="shoulder_right_link_1"/>
+</joint>
+
+<joint name="base_shoulder_left_fixed_joint" type="fixed">
+  <origin xyz="0.0 0.14 0.0" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="shoulder_left_link_1"/>
+</joint>
+
+<joint name="Rigid17" type="fixed">
+  <origin xyz="0.0 0.02 -0.1395" rpy="0 0 0"/>
+  <parent link="elbow_right_link_1"/>
+  <child link="forearm_left_link_1"/>
+</joint>
+
+<joint name="Rigid18" type="fixed">
+  <origin xyz="0.0 0.02 -0.1395" rpy="0 0 0"/>
+  <parent link="elbow_left_link_1"/>
+  <child link="forearm_right_link_1"/>
+</joint>
+
+</robot>

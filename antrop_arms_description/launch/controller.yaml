@@ -1,4 +1,4 @@
-antrop_arms_controller:
+antrop_arms:
   # Publish all joint states -----------------------------------
   joint_state_controller:
     type: joint_state_controller/JointStateController

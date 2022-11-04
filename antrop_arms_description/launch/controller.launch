@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <launch>
 
 <rosparam file="$(find antrop_arms_description)/launch/controller.yaml" command="load"/>

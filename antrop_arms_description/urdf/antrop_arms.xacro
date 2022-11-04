@@ -4,6 +4,7 @@
 <xacro:include filename="$(find antrop_arms_description)/urdf/materials.xacro" />
 <xacro:include filename="$(find antrop_arms_description)/urdf/antrop_arms.trans" />
 <xacro:include filename="$(find antrop_arms_description)/urdf/antrop_arms.gazebo" />
+<link name="world"/>
 <link name="base_link">
   <inertial>
     <origin xyz="1.066898751021674e-15 6.668117193885462e-17 -0.0018137714290285523" rpy="0 0 0"/>
@@ -277,11 +278,13 @@
   </collision>
 </link>
 
-<joint name="base_shoulder_left_joint" type="continuous">
+<joint name="base_shoulder_left_joint" type="revolute">
   <origin xyz="0.021 0.04 -0.0" rpy="0 0 0"/>
   <parent link="shoulder_left_link_1"/>
   <child link="Shoulder_Yaw_Structure_v1_1"/>
   <axis xyz="1.0 -0.0 0.0"/>
+  <limit effort="20.1" velocity="2" lower="-0.174533" upper="1.5708" />
+  <!--Here we should keep in mind exactly which arm we are looking at since the limits are opposite when it comes to upper/lower limit for each side-->
 </joint>
 
 <joint name="Rigid3" type="fixed">
@@ -296,18 +299,21 @@
   <child link="Shoulder_Yaw_Transmission_v1_1"/>
 </joint>
 
-<joint name="shoulder_elbow_left_joint" type="continuous">
+<joint name="shoulder_elbow_left_joint" type="revolute">
   <origin xyz="0.0 0.0 -0.048" rpy="0 0 0"/>
   <parent link="Shoulder_Yaw_Transmission_v1_1"/>
   <child link="elbow_left_link_1"/>
   <axis xyz="0.0 0.0 1.0"/>
+  <limit effort="20.1" velocity="2" lower="-1.5708" upper="1.5708" />
 </joint>
 
-<joint name="base_shoulder_right_joint" type="continuous">
+<joint name="base_shoulder_right_joint" type="revolute">
   <origin xyz="0.021 -0.04 -0.0" rpy="0 0 0"/>
   <parent link="shoulder_right_link_1"/>
   <child link="Shoulder_Yaw_Structure_v1__1__1"/>
-  <axis xyz="1.0 -0.0 0.0"/>
+  <axis xyz="1 0 0" />
+  <limit effort="20.1" velocity="2" lower="-1.5708" upper="0.174533" /><!--"0.174533" corresponds to 10 degrees transformed to radians-->
+  <!--Here we should keep in mind exactly which arm we are looking at since the limits are opposite when it comes to upper/lower limit for each side-->
 </joint>
 
 <joint name="Rigid9" type="fixed">
@@ -322,11 +328,12 @@
   <child link="Shoulder_Yaw_Transmission_v1__1__1"/>
 </joint>
 
-<joint name="shoulder_elbow_right_joint" type="continuous">
+<joint name="shoulder_elbow_right_joint" type="revolute">
   <origin xyz="0.0 0.0 -0.048" rpy="0 0 0"/>
   <parent link="Shoulder_Yaw_Transmission_v1__1__1"/>
   <child link="elbow_right_link_1"/>
   <axis xyz="0.0 -0.0 1.0"/>
+  <limit effort="20.1" velocity="2" lower="-1.5708" upper="1.5708" />
 </joint>
 
 <joint name="base_shoulder_right_fixed_joint" type="fixed">
@@ -341,16 +348,26 @@
   <child link="shoulder_left_link_1"/>
 </joint>
 
-<joint name="Rigid17" type="fixed">
+<joint name="elbow_forearm_right_joint" type="revolute">
   <origin xyz="0.0 0.02 -0.1395" rpy="0 0 0"/>
+  <limit effort="20.1" velocity="2" lower="-2.35619" upper="2.35619" />
+  <axis xyz="0 1 0" />
   <parent link="elbow_right_link_1"/>
+  <child link="forearm_right_link_1"/>
+</joint>
+
+<joint name="elbow_forearm_left_joint" type="revolute">
+  <origin xyz="0.0 0.02 -0.1395" rpy="0 0 0"/>
+  <limit effort="20.1" velocity="2" lower="-2.35619" upper="2.35619" />
+  <parent link="elbow_left_link_1"/>
+  <axis xyz="0 1 0" />
   <child link="forearm_left_link_1"/>
 </joint>
 
-<joint name="Rigid18" type="fixed">
-  <origin xyz="0.0 0.02 -0.1395" rpy="0 0 0"/>
-  <parent link="elbow_left_link_1"/>
-  <child link="forearm_right_link_1"/>
+<joint name="float_base_link" type="fixed">
+  <origin xyz="0 0 1.5" rpy="0 0 0"/>
+  <parent link="world"/>
+  <child link="base_link"/>
 </joint>
 
 </robot>

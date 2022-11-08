@@ -1,0 +1,11 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: antrop_arms
+    relative_path: urdf/antrop_arms.xacro
+    xacro_args: ""
+  SRDF:
+    relative_path: config/antrop_arms.srdf
+  CONFIG:
+    author_name: lmaric
+    author_email: Luka.Maric@fer.hr
+    generated_timestamp: 1667914131

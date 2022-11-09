@@ -6,26 +6,27 @@ antrop_arms:
 
   # Position Controllers --------------------------------------
   base_shoulder_left_joint_position_controller:
-    type: effort_controllers/JointPositionController
+    type: position_controllers/JointPositionController
     joint: base_shoulder_left_joint
-    pid: {p: 100.0, i: 0.01, d: 10.0}
+    #pid: {p: 100.0, i: 0.01, d: 10.0}
   shoulder_elbow_left_joint_position_controller:
-    type: effort_controllers/JointPositionController
+    type: position_controllers/JointPositionController
     joint: shoulder_elbow_left_joint
-    pid: {p: 100.0, i: 0.01, d: 10.0}
+    #pid: {p: 100.0, i: 0.01, d: 10.0}
   base_shoulder_right_joint_position_controller:
-    type: effort_controllers/JointPositionController
+    type: position_controllers/JointPositionController
     joint: base_shoulder_right_joint
-    pid: {p: 100.0, i: 0.01, d: 10.0}
+    #pid: {p: 100.0, i: 0.01, d: 10.0}
   shoulder_elbow_right_joint_position_controller:
-    type: effort_controllers/JointPositionController
+    type: position_controllers/JointPositionController
     joint: shoulder_elbow_right_joint
-    pid: {p: 100.0, i: 0.01, d: 10.0}
+    #pid: {p: 100.0, i: 0.01, d: 10.0}
   elbow_forearm_left_joint_position_controller:
-    type: effort_controllers/JointPositionController
+    type: position_controllers/JointPositionController
     joint: elbow_forearm_left_joint
-    pid: {p: 100.0, i: 0.01, d: 10.0}
+    #pid: {p: 100.0, i: 0.01, d: 10.0}
   elbow_forearm_right_joint_position_controller:
-    type: effort_controllers/JointPositionController
+    type: position_controllers/JointPositionController
     joint: elbow_forearm_right_joint
-    pid: {p: 100.0, i: 0.01, d: 10.0}
+    #pid: {p: 100.0, i: 0.01, d: 10.0}
+

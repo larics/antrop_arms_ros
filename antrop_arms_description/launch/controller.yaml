@@ -36,7 +36,7 @@ antrop_arms:
     joints: 
       - base_shoulder_left_joint
       - shoulder_elbow_left_joint
-      - elbow_forearm_right_joint
+      - elbow_forearm_left_joint
   right_arm_controller: 
     type: position_controllers/JointTrajectoryController
     joints: 

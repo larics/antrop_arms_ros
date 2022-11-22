@@ -1,17 +1,2 @@
 controller_list:
-  - name: left_arm_controller
-    action_ns: follow_joint_trajectory
-    type: FollowJointTrajectory
-    default: True
-    joints:
-      - base_shoulder_left_joint
-      - shoulder_elbow_left_joint
-      - elbow_forearm_left_joint
-  - name: right_arm_controller
-    action_ns: follow_joint_trajectory
-    type: FollowJointTrajectory
-    default: True
-    joints:
-      - base_shoulder_right_joint
-      - shoulder_elbow_right_joint
-      - elbow_forearm_right_joint
+  []

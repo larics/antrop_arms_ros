@@ -1,6 +1,6 @@
 moveit_setup_assistant_config:
   URDF:
-    package: antrop_arms
+    package: antrop_arms_description
     relative_path: urdf/antrop_arms.xacro
     xacro_args: ""
   SRDF:
@@ -8,4 +8,4 @@ moveit_setup_assistant_config:
   CONFIG:
     author_name: lmaric
     author_email: Luka.Maric@fer.hr
-    generated_timestamp: 1667914131
+    generated_timestamp: 1669112825

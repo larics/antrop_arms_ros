@@ -421,6 +421,7 @@
         <child link="Shoulder_Yaw_Structure_v1_1" />
         <axis xyz="1.0 -0.0 0.0" />
         <limit effort="20.1" lower="-0.174533" upper="1.5708" velocity="2" />
+        <!--Here we should keep in mind exactly which arm we are looking at since the limits are opposite when it comes to upper/lower limit for each side-->
     </joint>
     <joint name="Rigid3" type="fixed">
         <origin rpy="0 0 0" xyz="-0.021 0.0 -0.075" />
@@ -445,6 +446,8 @@
         <child link="Shoulder_Yaw_Structure_v1__1__1" />
         <axis xyz="1 0 0" />
         <limit effort="20.1" lower="-1.5708" upper="0.174533" velocity="2" />
+        <!--"0.174533" corresponds to 10 degrees transformed to radians-->
+        <!--Here we should keep in mind exactly which arm we are looking at since the limits are opposite when it comes to upper/lower limit for each side-->
     </joint>
     <joint name="Rigid9" type="fixed">
         <origin rpy="0 0 0" xyz="-0.021 0.0 -0.075" />

@@ -7,6 +7,26 @@
     <material name="silver">
         <color rgba="0.700 0.700 0.700 1.000" />
     </material>
+    <transmission name="base_shoulder_left_pitch_joint_tran">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="base_shoulder_left_pitch_joint">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="base_shoulder_left_pitch_joint_actr">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+        </actuator>
+    </transmission>
+    <transmission name="base_shoulder_right_pitch_joint_tran">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="base_shoulder_right_pitch_joint">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+        </joint>
+        <actuator name="base_shoulder_right_pitch_joint_actr">
+            <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+        </actuator>
+    </transmission>
     <transmission name="base_shoulder_left_joint_tran">
         <type>transmission_interface/SimpleTransmission</type>
         <joint name="base_shoulder_left_joint">
@@ -154,7 +174,11 @@
         <mu2>0.2</mu2>
         <selfCollide>true</selfCollide>
     </gazebo>
+    <!--Virtual links only used for simulation work-->
     <link name="world" />
+    <link name="right_ee_link" />
+    <link name="left_ee_link" />
+    <!--Actual robot links-->
     <link name="base_link">
         <inertial>
             <origin rpy="0 0 0" xyz="1.066898751021674e-15 6.668117193885462e-17 -0.0018137714290285523" />
@@ -175,6 +199,8 @@
             </geometry>
         </collision>
     </link>
+    <!--Left side of the robot-->
+    <!--Left shoulder-->
     <link name="Shoulder_Yaw_Structure_v1_1">
         <inertial>
             <origin rpy="0 0 0" xyz="-0.021135735062036764 -8.326672684688674e-16 -0.04093696874713262" />
@@ -235,6 +261,27 @@
             </geometry>
         </collision>
     </link>
+    <link name="shoulder_left_link_1">
+        <inertial>
+            <origin rpy="0 0 0" xyz="-0.0002500317321533693 0.035918090920304124 -0.013543028885077059" />
+            <mass value="0.6591423872621155" />
+            <inertia ixx="0.000324" ixy="-9e-06" ixz="2e-06" iyy="0.000242" iyz="3.6e-05" izz="0.000235" />
+        </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0.0 -0.14 -0.0" />
+            <geometry>
+                <mesh filename="package://antrop_arms_description/meshes/shoulder_left_link_1.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+            <material name="silver" />
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0.0 -0.14 -0.0" />
+            <geometry>
+                <mesh filename="package://antrop_arms_description/meshes/shoulder_left_link_1.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </collision>
+    </link>
+    <!--Left elbow-->
     <link name="elbow_left_link_1">
         <inertial>
             <origin rpy="0 0 0" xyz="-1.899869150889799e-14 -0.00021228541858173133 -0.11684928259378977" />
@@ -255,6 +302,29 @@
             </geometry>
         </collision>
     </link>
+    <!--Left forearm-->
+    <link name="forearm_left_link_1">
+        <inertial>
+            <origin rpy="0 0 0" xyz="-2.4015511801422917e-14 -0.020000000000116203 -0.14499270392199487" />
+            <mass value="0.20799291557495453" />
+            <inertia ixx="0.001901" ixy="-0.0" ixz="-0.0" iyy="0.001879" iyz="0.0" izz="3.1e-05" />
+        </inertial>
+        <visual>
+            <origin rpy="0 0 0" xyz="0.0155 0.16 0.3025" />
+            <geometry>
+                <mesh filename="package://antrop_arms_description/meshes/forearm_left_link_1.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+            <material name="silver" />
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0.0155 0.16 0.3025" />
+            <geometry>
+                <mesh filename="package://antrop_arms_description/meshes/forearm_left_link_1.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </collision>
+    </link>
+    <!--Right side of the robot-->
+    <!--Right shoulder-->
     <link name="Shoulder_Yaw_Structure_v1__1__1">
         <inertial>
             <origin rpy="0 0 0" xyz="-0.021135735062036733 -9.43689570931383e-16 -0.040936968747132534" />
@@ -315,26 +385,6 @@
             </geometry>
         </collision>
     </link>
-    <link name="elbow_right_link_1">
-        <inertial>
-            <origin rpy="0 0 0" xyz="-1.675569405445998e-14 0.0002122854185845624 -0.11684928259381297" />
-            <mass value="0.6214584962841804" />
-            <inertia ixx="0.000538" ixy="-0.0" ixz="0.0" iyy="0.000531" iyz="3e-06" izz="0.000118" />
-        </inertial>
-        <visual>
-            <origin rpy="0 0 0" xyz="0.0155 0.18 0.163" />
-            <geometry>
-                <mesh filename="package://antrop_arms_description/meshes/elbow_right_link_1.stl" scale="0.001 0.001 0.001" />
-            </geometry>
-            <material name="silver" />
-        </visual>
-        <collision>
-            <origin rpy="0 0 0" xyz="0.0155 0.18 0.163" />
-            <geometry>
-                <mesh filename="package://antrop_arms_description/meshes/elbow_right_link_1.stl" scale="0.001 0.001 0.001" />
-            </geometry>
-        </collision>
-    </link>
     <link name="shoulder_right_link_1">
         <inertial>
             <origin rpy="0 0 0" xyz="-0.0002500317321433487 -0.03591809092030432 -0.013543028885077014" />
@@ -355,46 +405,28 @@
             </geometry>
         </collision>
     </link>
-    <link name="shoulder_left_link_1">
+    <!--Right elbow-->
+    <link name="elbow_right_link_1">
         <inertial>
-            <origin rpy="0 0 0" xyz="-0.0002500317321533693 0.035918090920304124 -0.013543028885077059" />
-            <mass value="0.6591423872621155" />
-            <inertia ixx="0.000324" ixy="-9e-06" ixz="2e-06" iyy="0.000242" iyz="3.6e-05" izz="0.000235" />
+            <origin rpy="0 0 0" xyz="-1.675569405445998e-14 0.0002122854185845624 -0.11684928259381297" />
+            <mass value="0.6214584962841804" />
+            <inertia ixx="0.000538" ixy="-0.0" ixz="0.0" iyy="0.000531" iyz="3e-06" izz="0.000118" />
         </inertial>
         <visual>
-            <origin rpy="0 0 0" xyz="0.0 -0.14 -0.0" />
+            <origin rpy="0 0 0" xyz="0.0155 0.18 0.163" />
             <geometry>
-                <mesh filename="package://antrop_arms_description/meshes/shoulder_left_link_1.stl" scale="0.001 0.001 0.001" />
+                <mesh filename="package://antrop_arms_description/meshes/elbow_right_link_1.stl" scale="0.001 0.001 0.001" />
             </geometry>
             <material name="silver" />
         </visual>
         <collision>
-            <origin rpy="0 0 0" xyz="0.0 -0.14 -0.0" />
+            <origin rpy="0 0 0" xyz="0.0155 0.18 0.163" />
             <geometry>
-                <mesh filename="package://antrop_arms_description/meshes/shoulder_left_link_1.stl" scale="0.001 0.001 0.001" />
+                <mesh filename="package://antrop_arms_description/meshes/elbow_right_link_1.stl" scale="0.001 0.001 0.001" />
             </geometry>
         </collision>
     </link>
-    <link name="forearm_left_link_1">
-        <inertial>
-            <origin rpy="0 0 0" xyz="-2.4015511801422917e-14 -0.020000000000116203 -0.14499270392199487" />
-            <mass value="0.20799291557495453" />
-            <inertia ixx="0.001901" ixy="-0.0" ixz="-0.0" iyy="0.001879" iyz="0.0" izz="3.1e-05" />
-        </inertial>
-        <visual>
-            <origin rpy="0 0 0" xyz="0.0155 0.16 0.3025" />
-            <geometry>
-                <mesh filename="package://antrop_arms_description/meshes/forearm_left_link_1.stl" scale="0.001 0.001 0.001" />
-            </geometry>
-            <material name="silver" />
-        </visual>
-        <collision>
-            <origin rpy="0 0 0" xyz="0.0155 0.16 0.3025" />
-            <geometry>
-                <mesh filename="package://antrop_arms_description/meshes/forearm_left_link_1.stl" scale="0.001 0.001 0.001" />
-            </geometry>
-        </collision>
-    </link>
+    <!--Right forearm-->
     <link name="forearm_right_link_1">
         <inertial>
             <origin rpy="0 0 0" xyz="-2.80782341821606e-14 -0.020000000000115925 -0.14499270392199565" />
@@ -415,6 +447,7 @@
             </geometry>
         </collision>
     </link>
+    <!--Robot joints-->
     <joint name="base_shoulder_left_joint" type="revolute">
         <origin rpy="0 0 0" xyz="0.021 0.04 -0.0" />
         <parent link="shoulder_left_link_1" />
@@ -466,13 +499,17 @@
         <axis xyz="0.0 -0.0 1.0" />
         <limit effort="20.1" lower="-1.5708" upper="1.5708" velocity="2" />
     </joint>
-    <joint name="base_shoulder_right_fixed_joint" type="fixed">
+    <joint name="base_shoulder_right_pitch_joint" type="revolute">
         <origin rpy="0 0 0" xyz="0.0 -0.14 0.0" />
+        <limit effort="20.1" lower="-1.5708" upper="1.5708" velocity="2" />
+        <axis xyz="0 1 0" />
         <parent link="base_link" />
         <child link="shoulder_right_link_1" />
     </joint>
-    <joint name="base_shoulder_left_fixed_joint" type="fixed">
+    <joint name="base_shoulder_left_pitch_joint" type="revolute">
         <origin rpy="0 0 0" xyz="0.0 0.14 0.0" />
+        <limit effort="20.1" lower="-1.5708" upper="1.5708" velocity="2" />
+        <axis xyz="0 1 0" />
         <parent link="base_link" />
         <child link="shoulder_left_link_1" />
     </joint>
@@ -494,6 +531,16 @@
         <origin rpy="0 0 0" xyz="0 0 1.5" />
         <parent link="world" />
         <child link="base_link" />
+    </joint>
+    <joint name="right_ee" type="fixed">
+        <origin rpy="0 0 0" xyz="0 0 -0.225" />
+        <parent link="forearm_right_link_1" />
+        <child link="right_ee_link" />
+    </joint>
+    <joint name="left_ee" type="fixed">
+        <origin ryp="0 0 0" xyz="0 0 -0.24" />
+        <parent link="forearm_left_link_1" />
+        <child link="left_ee_link" />
     </joint>
 </robot>
 

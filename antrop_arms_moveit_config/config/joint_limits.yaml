@@ -13,7 +13,17 @@ joint_limits:
     max_velocity: 2
     has_acceleration_limits: false
     max_acceleration: 0
+  base_shoulder_left_pitch_joint:
+    has_velocity_limits: true
+    max_velocity: 2
+    has_acceleration_limits: false
+    max_acceleration: 0
   base_shoulder_right_joint:
+    has_velocity_limits: true
+    max_velocity: 2
+    has_acceleration_limits: false
+    max_acceleration: 0
+  base_shoulder_right_pitch_joint:
     has_velocity_limits: true
     max_velocity: 2
     has_acceleration_limits: false

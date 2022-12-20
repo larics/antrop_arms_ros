@@ -154,6 +154,7 @@ class AntropArmsPythonInterface(object):
         targetPose.header.stamp = rospy.Time.now()
         targetPose.pose.position.x = target[0]
         targetPose.pose.position.y = target[1]
+        # TODO: Possible fix for world -> baselink transformation is to add 1.5 to position.z (Ex. + z_translation/hover_distance)
         targetPose.pose.position.z = target[2]
         targetPose.pose.orientation.w = target[4]
 

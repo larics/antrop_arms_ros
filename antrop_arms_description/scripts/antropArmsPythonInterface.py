@@ -10,7 +10,7 @@ from moveit_commander.conversions import pose_to_list
 import numpy as np
 import time
 from moveit_msgs.msg import PositionIKRequest, RobotState, DisplayRobotState
-from moveit_msgs.srv import GetPositionFK, GetPositionFKRequest, GetPositionIK, GetPositionFKResponse
+from moveit_msgs.srv import GetPositionFK, GetPositionFKRequest, GetPositionIK, GetPositionFKResponse, GetPositionIKResponse, GetPositionIKRequest
 from tf import TransformListener
 
 
@@ -52,21 +52,30 @@ class AntropArmsPythonInterface(object):
         print(f"End effector is: {ee_link}")
         available_groups = robot.get_group_names()
         print(f"Available groups are: {available_groups}")
-        print(group.get_current_pose())
+
 
         # Variables for practical use later in the code!
         self.robot = robot
+        self.frame_id = "world"
         self.scene = scene
         self.group = group
+        keyword = "joint"
+        self.incorrect_joint_list = self.group.get_joints()
+        self.joint_list = [element for element in self.incorrect_joint_list if keyword in element]
         self.display_trajectory_publisher = display_trajectory_publisher
         self.planning_frame = planning_frame
-        self.ee_link = ee_link
+        self.ee_link = []
+        self.ee_link.append(ee_link)
         self.available_groups = available_groups
         self.correction_matrix = np.matrix([[1, 0, 0, 0],
                                             [0, 1, 0, 0],
                                             [0, 0, 1, 1.5],
                                             [0, 0, 0, 1]])
         #self.DH_matrix = self.correction_matrix * np.matrix([[]])
+        
+    def getCurrentJointStates(self):
+        return self.group.get_current_joint_values()
+        
 
 
     def moveToJointStateGoal(self):
@@ -83,7 +92,6 @@ class AntropArmsPythonInterface(object):
             try:
                 joint_goal = self.group.get_current_joint_values()
                 print(f"Current value is: {joint_goal}")
-                # TODO: See if there is a way to get random values WITHIN set joint limits (revolute joints) for testing!
                 attempt_pose = self.group.get_random_joint_values()
                 print(f"Attempting pose: {attempt_pose}")
                 self.group.go(attempt_pose, wait=True)
@@ -95,7 +103,7 @@ class AntropArmsPythonInterface(object):
                 self.group.stop()
                 time.sleep(2)
                 print("Starting the cycle again!")
-
+                
             except Exception as e:
                 print(e)
 
@@ -114,89 +122,128 @@ class AntropArmsPythonInterface(object):
         :return: response -> xyz pose and orientation of the end effector
         """
         self.input_joint_states = input_joint_states
-        #http://docs.ros.org/en/kinetic/api/moveit_tutorials/html/doc/robot_model_and_robot_state
-        # /robot_model_and_robot_state_tutorial.html#the-robotmodel-and-robotstate-classes
-        # https://www.youtube.com/watch?v=_pIyXGRXMWY
+        print("Starting the getFK method!")
         rospy.wait_for_service("compute_fk")
 
         try:
             moveit_fk = rospy.ServiceProxy("compute_fk", GetPositionFK)
+            print("Compute FK service initiated!")
+            
         except rospy.ServiceException as e:
             print(f"Service call failed: {e}")
+            
         request = GetPositionFKRequest()
-        request.header.frame_id = "world"
+        request.header.frame_id = self.frame_id
         # End effector link!
         try:
             if self.group.has_end_effector_link():
-                request.fk_link_names = [self.group.get_end_effector_link()]
+                request.fk_link_names = self.ee_link
+
         except Exception as e:
             print(f"No end effector link found: {e}")
 
-        # Joints part of the used group -> check move_group functionality to fill this (or just hardcode/fill by hand)
-        request.robot_state.joint_state.name = [self.group.get_joints()]
+        # Fill request with a list of joint names 
+        request.robot_state.joint_state.name = self.joint_list
         # Pass a goal joint_state for which the FK will get computed
-        request.robot_state.joint_state.position = input_joint_states
+        request.robot_state.joint_state.position = self.input_joint_states
         # This is the computed pose for the end effector for given joint_states
         response = moveit_fk(request)
         print(f"Computed FK: {response}")
         return response
+        
+    def create_pose(self, x, y, z, qx, qy, qz, qw):
+        # Create a PoseStamped message
+        pose = PoseStamped()
+        pose.header.frame_id = self.frame_id 
+        pose.pose.position.x = x 
+        pose.pose.position.y = y  
+        pose.pose.position.z = z + 1.5   
+        pose.pose.orientation.x = qx  
+        pose.pose.orientation.y = qy  
+        pose.pose.orientation.z = qz  
+        pose.pose.orientation.w = qw  
+        return pose
 
-    def getIK(self, target, current_joint_states):
+    def getIK(self, target_pose, current_joint_state):
         """
-        move_group.get_current_joint_values()
-        :param target: -> xyz position of the robot ee, a 3x1 numpy vector + desired orientation?
-        :param current_joint_states: -> 4x1 array of current joint states
+        :param target_pose: -> xyz position of the robot ee and xyzw quaternion orientation, a 7x1 array.
         :return: 4x1 array of solver joint states to get into the target position
         """
-
-        targetPose = PoseStamped()
-        # TODO: Check in which format does the target value get passed, and fill position/orientation accordingly!
-        targetPose.header.stamp = rospy.Time.now()
-        targetPose.pose.position.x = target[0]
-        targetPose.pose.position.y = target[1]
-        # TODO: Possible fix for world -> baselink transformation is to add 1.5 to position.z (Ex. + z_translation/hover_distance)
-        targetPose.pose.position.z = target[2]
-        targetPose.pose.orientation.w = target[4]
-
+        self.target_pose = target_pose
+        print(f"Target pose: {self.target_pose}")
+        
+        self.current_joint_state = current_joint_state
+        print("Starting the getIK method!")
+        rospy.wait_for_service('compute_ik')
+        
+        try:
+            compute_ik = rospy.ServiceProxy("compute_ik", GetPositionIK)
+            print("Compute IK service initiated!")  
+            
+        except rospy.ServiceException as e:
+            print(f"Service call failed: {e}")
+        
+        # Filling in the RobotState() object         
         robotTemp = RobotState()
-        robotTemp.joint_state.name = [self.group.get_joints()]
-        robotTemp.joint_state.position = current_joint_states
-
+        robotTemp.joint_state.header.frame_id = self.frame_id
+        robotTemp.joint_state.name = self.joint_list
+        robotTemp.joint_state.position = self.current_joint_state
+        
         service_request = PositionIKRequest()
         service_request.group_name = self.group_name
+        service_request.pose_stamped = self.target_pose
+        service_request.robot_state = robotTemp
+        service_request.timeout.secs = 1
+        #service_request.attempts = 5
+
+        
         try:
             if self.group.has_end_effector_link():
-                service_request.ik_link_name = [self.group.get_end_effector_link()]
+                service_request.ik_link_name = self.ee_link[0]
+                
         except Exception as e:
             print(f"No end effector link found: {e}")
 
-        service_request.pose_stamped = targetPose
-        service_request.robot_state = robotTemp
-        service_request.timeout.secs = 1
-
-        rospy.wait_for_service('compute_ik')
-        compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
+        print(f"Service request: {service_request}")
 
         resp = compute_ik(service_request)
-
+        print(f"Computed IK: {resp}")
         return list(resp.solution.joint_state.position)
 
-    def getJacobian(self):
-        pass
+    def getJacobian(self, joint_state):
+        """
+        """
+        self.joint_state = joint state
+        
+        currentState = RobotState()
+        currentState.joint_state.header.frame_id = self.frame_id
+        currentState.joint_state.name = self.joint_list
+        currentState.joint_state.position = self.joint_state
+        
+        jacobianMatrix = np.array(self.group.get_jacobian_matrix(currentState))
 
 
 def main():
 
   try:
-    print("Starting the moveToJointStateGoal functionality.")
+    print("Starting the AntropArmsPythonInterface!")
     testing = AntropArmsPythonInterface()
-    testing.moveToJointStateGoal()
+    #testing.moveToJointStateGoal()
+    test_input_joints = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053]
+    testing.getFK(test_input_joints)
+    test_current_joint = testing.getCurrentJointStates()
+    print(f"This is a possible joint_state: {test_input_joints}. This is the current joint_state: {test_current_joint}!")
+    test_goal_position = testing.create_pose(-0.19,-0.12,-0.3,0,0,0,0)
+    testing.getIK(test_goal_position,test_current_joint)
+
+    
 
   except rospy.ROSInterruptException:
     return
 
   finally:
-      moveit_commander.roscpp_shutdown()
+      print("Closing everything!")
+      #moveit_commander.roscpp_shutdown()
 
 if __name__ == '__main__':
   main()

@@ -17,6 +17,8 @@ from tf import TransformListener
 """
 RELEVANT SOURCES:
 https://github.com/ros-planning/moveit_commander/blob/indigo-devel/src/moveit_commander/move_group.py
+
+
 """
 
 class AntropArmsPythonInterface(object):
@@ -77,7 +79,6 @@ class AntropArmsPythonInterface(object):
         return self.group.get_current_joint_values()
         
 
-
     def moveToJointStateGoal(self):
         """
         This method moves the joints into specified states. Since the planning frame is set to world instead of
@@ -106,6 +107,16 @@ class AntropArmsPythonInterface(object):
                 
             except Exception as e:
                 print(e)
+          
+          
+    def currentPose(self):
+        # Get the current end-effector pose
+        pose = self.group.get_current_pose().pose
+        # Print the end-effector pose
+        print("End-effector pose:")
+        print(f"Position: x={pose.position.x}, y={pose.position.y}, z={pose.position.z}")
+        print(f"Orientation: x={pose.orientation.x}, y={pose.orientation.y}, z={pose.orientation.z}, w={pose.orientation.w}")
+
 
     def moveToNamedTarget(self, namedTarget):
         """
@@ -115,6 +126,7 @@ class AntropArmsPythonInterface(object):
         self.group.set_named_target(namedTarget)
         #plan = self.group.plan()
         self.group.go(wait=True)
+
 
     def getFK(self, input_joint_states):
         """
@@ -151,13 +163,14 @@ class AntropArmsPythonInterface(object):
         print(f"Computed FK: {response}")
         return response
         
+        
     def create_pose(self, x, y, z, qx, qy, qz, qw):
         # Create a PoseStamped message
         pose = PoseStamped()
         pose.header.frame_id = self.frame_id 
         pose.pose.position.x = x 
         pose.pose.position.y = y  
-        pose.pose.position.z = z + 1.5   
+        pose.pose.position.z = z   
         pose.pose.orientation.x = qx  
         pose.pose.orientation.y = qy  
         pose.pose.orientation.z = qz  
@@ -176,13 +189,30 @@ class AntropArmsPythonInterface(object):
         else:
             return pose
             
+            
+    def cartesianPlanning(self, ee_pose):
+        """
+        # TODO: Documentation!
+        :param ee_pose: x, y, z, qx, qy, qz --> list of 7 floats
+        :return:
+        """
+        self.ee_pose = ee_pose
+        poseFormattedCartesian = self.create_pose(*self.ee_pose)
+        print(f"The desired pose: {poseFormattedCartesian}")
+        self.group.set_pose_target(poseFormattedCartesian, self.ee_link[0])
+        print("Defined the pose and attempting to move the arm!")
+        self.group.go( wait=True)
+        self.group.stop()
+        
+            
     def getIK(self, target_pose, current_joint_state):
         """
         :param target_pose: -> xyz position of the robot ee and xyzw quaternion orientation, a 7x1 array.
         :return: 4x1 array of solver joint states to get into the target position
         """
         self.target_pose = target_pose
-        print(f"Target pose: {self.target_pose}")
+        poseFormattedIK = self.create_pose(*self.target_pose)
+        print(f"Target pose: {poseFormattedIK}")
         
         self.current_joint_state = current_joint_state
         print("Starting the getIK method!")
@@ -200,25 +230,24 @@ class AntropArmsPythonInterface(object):
         robotTemp.joint_state.header.frame_id = self.frame_id
         robotTemp.joint_state.name = self.joint_list
         robotTemp.joint_state.position = self.current_joint_state
-        
-        service_request = PositionIKRequest()
-        service_request.group_name = self.group_name
-        service_request.pose_stamped = self.target_pose
-        service_request.robot_state = robotTemp
-        service_request.timeout.secs = 1
-        #service_request.attempts = 5
+        # Filling in the PositionIKRequest object
+        serviceRequest = PositionIKRequest()
+        serviceRequest.group_name = self.group_name
+        serviceRequest.pose_stamped = poseFormattedIK
+        serviceRequest.robot_state = robotTemp
+        serviceRequest.timeout.secs = 1
 
         
         try:
             if self.group.has_end_effector_link():
-                service_request.ik_link_name = self.ee_link[0]
+                serviceRequest.ik_link_name = self.ee_link[0]
                 
         except Exception as e:
             print(f"No end effector link found: {e}")
 
-        print(f"Service request: {service_request}")
+        print(f"Service request: {serviceRequest}")
 
-        resp = compute_ik(service_request)
+        resp = compute_ik(serviceRequest)
         print(f"Computed IK: {resp}")
         return list(resp.solution.joint_state.position)
 
@@ -243,13 +272,16 @@ def main():
     #testing.moveToJointStateGoal()
     #test_input_joints = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053]
     #testing.getFK(test_input_joints)
-    #test_current_joint = testing.getCurrentJointStates()
-    #print(f"This is a possible joint_state: {test_input_joints}. This is the current joint_state: {test_current_joint}!")
-    test_goal_position = testing.create_pose(-0.19,-0.12,-0.3,0,0.7,0.2,1)
-    print(test_goal_position)
-    #testing.getIK(test_goal_position,test_current_joint)
-
-    
+    testCurrentJointStates = testing.getCurrentJointStates()
+    testing.currentPose() # TODO: Remove after debugging
+    # Working pose for "left_arm" group:
+    # Position: x=-0.3196075296701223, y=0.36576859700616704, z=1.2952693892762086
+    # Orientation: x=0.1446269355378438, y=0.10098839507898862, z=-0.13750360498404174, w=0.9746677137325802
+    position = [-0.3196075296701223,0.36576859700616704,1.2952693892762086,0.1446269355378438,0.10098839507898862,-0.13750360498404174,0.9746677137325802]
+    testing.getIK(position,testCurrentJointStates)
+    testing.cartesianPlanning(position)
+    testing.currentPose() # TODO: Remove after debugging
+ 
 
   except rospy.ROSInterruptException:
     return

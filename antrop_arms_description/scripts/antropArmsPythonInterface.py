@@ -162,8 +162,20 @@ class AntropArmsPythonInterface(object):
         pose.pose.orientation.y = qy  
         pose.pose.orientation.z = qz  
         pose.pose.orientation.w = qw  
-        return pose
+        quaternion = np.array([qx, qy, qz, qw])
+        quaternionLength = np.sqrt(np.sum(quaternion ** 2))
 
+        if quaternionLength > 1.0:
+            print(f"Pose orientation has to be normalized, current lenght: {quaternionLength} exceeds 1!")
+            pose.pose.orientation.x = qx / quaternionLength
+            pose.pose.orientation.y = qy / quaternionLength
+            pose.pose.orientation.z = qz / quaternionLength
+            pose.pose.orientation.w = qw / quaternionLength
+            return pose
+
+        else:
+            return pose
+            
     def getIK(self, target_pose, current_joint_state):
         """
         :param target_pose: -> xyz position of the robot ee and xyzw quaternion orientation, a 7x1 array.
@@ -213,7 +225,7 @@ class AntropArmsPythonInterface(object):
     def getJacobian(self, joint_state):
         """
         """
-        self.joint_state = joint state
+        self.joint_state = joint_state
         
         currentState = RobotState()
         currentState.joint_state.header.frame_id = self.frame_id
@@ -229,12 +241,13 @@ def main():
     print("Starting the AntropArmsPythonInterface!")
     testing = AntropArmsPythonInterface()
     #testing.moveToJointStateGoal()
-    test_input_joints = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053]
-    testing.getFK(test_input_joints)
-    test_current_joint = testing.getCurrentJointStates()
-    print(f"This is a possible joint_state: {test_input_joints}. This is the current joint_state: {test_current_joint}!")
-    test_goal_position = testing.create_pose(-0.19,-0.12,-0.3,0,0,0,0)
-    testing.getIK(test_goal_position,test_current_joint)
+    #test_input_joints = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053]
+    #testing.getFK(test_input_joints)
+    #test_current_joint = testing.getCurrentJointStates()
+    #print(f"This is a possible joint_state: {test_input_joints}. This is the current joint_state: {test_current_joint}!")
+    test_goal_position = testing.create_pose(-0.19,-0.12,-0.3,0,0.7,0.2,1)
+    print(test_goal_position)
+    #testing.getIK(test_goal_position,test_current_joint)
 
     
 

@@ -79,7 +79,7 @@ class AntropArmsPythonInterface(object):
         return self.group.get_current_joint_values()
         
 
-    def moveToJointStateGoal(self):
+    def moveToJointStateGoal(self, goal_joint_state):
         """
         This method moves the joints into specified states. Since the planning frame is set to world instead of
         base_link an additional transformation is needed in the form of a correction matrix.
@@ -87,27 +87,18 @@ class AntropArmsPythonInterface(object):
         T(world -> ee) isn't correct since we have a virtual link holding the base of our robot at an elevated z axis
         point.
         We multiply (from the left) with T(world -> base_link) in order to get T(base_link -> ee).
+        :param goal_joint_state: Desired joint values for the move_group selected!  ->   List of 4 floats 
+        Ex.: achievable_goal = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053]
         """
-        while 1:
-            achievable_goal = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053]
-            try:
-                joint_goal = self.group.get_current_joint_values()
-                print(f"Current value is: {joint_goal}")
-                attempt_pose = self.group.get_random_joint_values()
-                print(f"Attempting pose: {attempt_pose}")
-                self.group.go(attempt_pose, wait=True)
-                self.group.stop()
-                time.sleep(2)
-                print(f"Reverting to neutral pose:")
-                # Achievable_goal is simply a confirmed possible pose used for testing purposes!
-                self.group.go(achievable_goal, wait=True)
-                self.group.stop()
-                time.sleep(2)
-                print("Starting the cycle again!")
-                
-            except Exception as e:
+        self.goal_joint_state = goal_joint_state
+        print(f"The goal joint_state: {self.goal_joint_state}")
+        try:
+            self.group.go(self.goal_joint_state, wait=True)
+            self.group.stop()
+            
+        except Exception as e:
                 print(e)
-          
+
           
     def currentPose(self):
         # Get the current end-effector pose
@@ -120,8 +111,9 @@ class AntropArmsPythonInterface(object):
 
     def moveToNamedTarget(self, namedTarget):
         """
-        :param namedTarget: -> A pose defined in the MoveIt! setup assistant!
+        :param namedTarget: A pose defined in the MoveIt! setup assistant! -> String
         """
+        print("Starting the moveToNamedTarget method!")
         self.namedTarget = namedTarget
         self.group.set_named_target(namedTarget)
         #plan = self.group.plan()
@@ -165,6 +157,12 @@ class AntropArmsPythonInterface(object):
         
         
     def create_pose(self, x, y, z, qx, qy, qz, qw):
+        """
+        # TODO: Documentation! 
+        :params x,y,z position -> float
+        :params qx,qy,qz,qw quaternion orientation -> float
+        :return: returns a filled PoseStamped() object which is fed to other system parts 
+        """
         # Create a PoseStamped message
         pose = PoseStamped()
         pose.header.frame_id = self.frame_id 
@@ -190,17 +188,20 @@ class AntropArmsPythonInterface(object):
             return pose
             
             
-    def cartesianPlanning(self, ee_pose):
+    def moveToCartesianPose(self, ee_pose):
         """
         # TODO: Documentation!
         :param ee_pose: x, y, z, qx, qy, qz --> list of 7 floats
         :return:
         """
         self.ee_pose = ee_pose
+        print("Starting the moveToCartesianPose method!")
         poseFormattedCartesian = self.create_pose(*self.ee_pose)
         print(f"The desired pose: {poseFormattedCartesian}")
         self.group.set_pose_target(poseFormattedCartesian, self.ee_link[0])
         print("Defined the pose and attempting to move the arm!")
+        # TODO: There is planning and moving as a separate feature. Go does both.
+        # TODO: Might be better to split the functionality and do loop which waits for a non-error return from planning?
         self.group.go( wait=True)
         self.group.stop()
         
@@ -212,6 +213,7 @@ class AntropArmsPythonInterface(object):
         """
         self.target_pose = target_pose
         poseFormattedIK = self.create_pose(*self.target_pose)
+        print("Starting the getIK method!")
         print(f"Target pose: {poseFormattedIK}")
         
         self.current_joint_state = current_joint_state
@@ -251,16 +253,18 @@ class AntropArmsPythonInterface(object):
         print(f"Computed IK: {resp}")
         return list(resp.solution.joint_state.position)
 
+
     def getJacobian(self, joint_state):
         """
+        TODO: Documentation!
         """
+        # TODO: Finish implementation!
         self.joint_state = joint_state
         
         currentState = RobotState()
         currentState.joint_state.header.frame_id = self.frame_id
         currentState.joint_state.name = self.joint_list
         currentState.joint_state.position = self.joint_state
-        
         jacobianMatrix = np.array(self.group.get_jacobian_matrix(currentState))
 
 
@@ -269,18 +273,23 @@ def main():
   try:
     print("Starting the AntropArmsPythonInterface!")
     testing = AntropArmsPythonInterface()
-    #testing.moveToJointStateGoal()
-    #test_input_joints = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053]
-    #testing.getFK(test_input_joints)
+    achievableJointState = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053] 
+    # Forward kinematics
+    testing.getFK(achievableJointState)
+    # Move by feeding joint states
+    testing.moveToJointStateGoal(achievableJointState)
+    testing.currentPose()
     testCurrentJointStates = testing.getCurrentJointStates()
-    testing.currentPose() # TODO: Remove after debugging
     # Working pose for "left_arm" group:
     # Position: x=-0.3196075296701223, y=0.36576859700616704, z=1.2952693892762086
     # Orientation: x=0.1446269355378438, y=0.10098839507898862, z=-0.13750360498404174, w=0.9746677137325802
     position = [-0.3196075296701223,0.36576859700616704,1.2952693892762086,0.1446269355378438,0.10098839507898862,-0.13750360498404174,0.9746677137325802]
+    # Inverse kinematics
     testing.getIK(position,testCurrentJointStates)
-    testing.cartesianPlanning(position)
-    testing.currentPose() # TODO: Remove after debugging
+    # Move by feeding end-effector pose
+    testing.moveToCartesianPose(position)
+    testing.moveToCartesianPose(position) #Second one just in case the first planning fails until attempts are added!
+    testing.currentPose()
  
 
   except rospy.ROSInterruptException:

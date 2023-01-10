@@ -279,7 +279,7 @@ class AntropArmsPythonInterface(object):
         wz = (secondSample.orientation.z - firstSample.orientation.z) / deltaTime
         angularVelocity = [wx, wy, wz]
         
-        endEffectorVelocityVector = linearVelocity + angularVelocity
+        eeVelocityVector = linearVelocity + angularVelocity
         return eeVelocityVector
         
         

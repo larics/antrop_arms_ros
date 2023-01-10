@@ -191,7 +191,7 @@ class AntropArmsPythonInterface(object):
     def moveToCartesianPose(self, ee_pose):
         """
         # TODO: Documentation!
-        :param ee_pose: x, y, z, qx, qy, qz --> list of 7 floats
+        :param ee_pose: x, y, z, qx, qy, qz --> array (1x7) of 7 floats
         :return:
         """
         self.ee_pose = ee_pose
@@ -209,7 +209,7 @@ class AntropArmsPythonInterface(object):
     def getIK(self, target_pose, current_joint_state):
         """
         :param target_pose: -> xyz position of the robot ee and xyzw quaternion orientation, a 7x1 array.
-        :return: 4x1 array of solver joint states to get into the target position
+        :return: 4x1 array of solved joint states to get into the target position
         """
         self.target_pose = target_pose
         poseFormattedIK = self.create_pose(*self.target_pose)
@@ -254,18 +254,46 @@ class AntropArmsPythonInterface(object):
         return list(resp.solution.joint_state.position)
 
 
-    def getJacobian(self, joint_state):
+    def getEeVelocityVector(self):
         """
-        TODO: Documentation!
+        Possible daemon in a separate thead calculating the ee_velocity_vector?
         """
-        # TODO: Finish implementation!
-        self.joint_state = joint_state
+        samplingTime = 0.1 # Consider making an input argument to the method!
         
-        currentState = RobotState()
-        currentState.joint_state.header.frame_id = self.frame_id
-        currentState.joint_state.name = self.joint_list
-        currentState.joint_state.position = self.joint_state
-        jacobianMatrix = np.array(self.group.get_jacobian_matrix(currentState))
+        #! TODO: Test this functionality if it will be implemented via Python!
+        
+        firstSample = self.group.get_current_pose(self.ee_link[0]).pose
+        time.sleep(samplingTime)
+        secondSample = self.group.get_current_pose(self.ee_link[0]).pose
+        
+        # Linear velocity
+        vx = (secondSample.position.x - firstSample.position.x) / samplingTime
+        vy = (secondSample.position.y - firstSample.position.y) / samplingTime
+        vz = (secondSample.position.z - firstSample.position.z) / samplingTime
+        linearVelocity = [vx, vy, vz]
+
+        # Calculate angular velocity
+        wx = (secondSample.orientation.x - firstSample.orientation.x) / samplingTime
+        wy = (secondSample.orientation.y - firstSample.orientation.y) / samplingTime
+        wz = (secondSample.orientation.z - firstSample.orientation.z) / samplingTime
+        angularVelocity = [wx, wy, wz]
+        
+        endEffectorVelocityVector = linearVelocity + angularVelocity
+        return eeVelocityVector
+        
+        
+    def getJacobianMatrix(self, joint_state):
+        """
+        :param joint_state: -> current joint position values -> array (1x4) of 4 floats
+        :return: 6x4 array 
+        """
+        print("Starting the getJacobian method!")
+        self.joint_state = joint_state 
+        jacobianMatrix = self.group.get_jacobian_matrix(self.joint_state)
+        return jacobianMatrix
+        
+     
+        
 
 
 def main():
@@ -275,21 +303,22 @@ def main():
     testing = AntropArmsPythonInterface()
     achievableJointState = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053] 
     # Forward kinematics
-    testing.getFK(achievableJointState)
+    #testing.getFK(achievableJointState)
     # Move by feeding joint states
-    testing.moveToJointStateGoal(achievableJointState)
-    testing.currentPose()
+    #testing.moveToJointStateGoal(achievableJointState)
+    #testing.currentPose()
     testCurrentJointStates = testing.getCurrentJointStates()
     # Working pose for "left_arm" group:
     # Position: x=-0.3196075296701223, y=0.36576859700616704, z=1.2952693892762086
     # Orientation: x=0.1446269355378438, y=0.10098839507898862, z=-0.13750360498404174, w=0.9746677137325802
     position = [-0.3196075296701223,0.36576859700616704,1.2952693892762086,0.1446269355378438,0.10098839507898862,-0.13750360498404174,0.9746677137325802]
     # Inverse kinematics
-    testing.getIK(position,testCurrentJointStates)
+    #testing.getIK(position,testCurrentJointStates)
     # Move by feeding end-effector pose
-    testing.moveToCartesianPose(position)
-    testing.moveToCartesianPose(position) #Second one just in case the first planning fails until attempts are added!
-    testing.currentPose()
+    #testing.moveToCartesianPose(position)
+    #testing.moveToCartesianPose(position) #Second one just in case the first planning fails until attempts are added!
+    #testing.currentPose()
+    testing.getJacobianMatrix(testCurrentJointStates)
  
 
   except rospy.ROSInterruptException:

@@ -266,16 +266,17 @@ class AntropArmsPythonInterface(object):
         time.sleep(samplingTime)
         secondSample = self.group.get_current_pose(self.ee_link[0]).pose
         
+        deltaTime = None # Check if the current_pose() returns a timesamp (second-first)
         # Linear velocity
-        vx = (secondSample.position.x - firstSample.position.x) / samplingTime
-        vy = (secondSample.position.y - firstSample.position.y) / samplingTime
-        vz = (secondSample.position.z - firstSample.position.z) / samplingTime
+        vx = (secondSample.position.x - firstSample.position.x) / deltaTime
+        vy = (secondSample.position.y - firstSample.position.y) / deltaTime
+        vz = (secondSample.position.z - firstSample.position.z) / deltaTime
         linearVelocity = [vx, vy, vz]
 
         # Calculate angular velocity
-        wx = (secondSample.orientation.x - firstSample.orientation.x) / samplingTime
-        wy = (secondSample.orientation.y - firstSample.orientation.y) / samplingTime
-        wz = (secondSample.orientation.z - firstSample.orientation.z) / samplingTime
+        wx = (secondSample.orientation.x - firstSample.orientation.x) / deltaTime
+        wy = (secondSample.orientation.y - firstSample.orientation.y) / deltaTime
+        wz = (secondSample.orientation.z - firstSample.orientation.z) / deltaTime
         angularVelocity = [wx, wy, wz]
         
         endEffectorVelocityVector = linearVelocity + angularVelocity
@@ -291,9 +292,6 @@ class AntropArmsPythonInterface(object):
         self.joint_state = joint_state 
         jacobianMatrix = self.group.get_jacobian_matrix(self.joint_state)
         return jacobianMatrix
-        
-     
-        
 
 
 def main():

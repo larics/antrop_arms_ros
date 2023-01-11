@@ -1,0 +1,64 @@
+antrop_arms:
+  # Publish all joint states -----------------------------------
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 50
+
+  # Position Controllers --------------------------------------
+  base_shoulder_left_pitch_joint_position_controller:
+    type: position_controllers/JointPositionController
+    joint: base_shoulder_left_pitch_joint
+    pid: {p: 100.0, i: 0.01, d: 10.0}
+  base_shoulder_left_joint_position_controller:
+    type: position_controllers/JointPositionController
+    joint: base_shoulder_left_joint
+    pid: {p: 100.0, i: 0.01, d: 10.0}
+  shoulder_elbow_left_joint_position_controller:
+    type: position_controllers/JointPositionController
+    joint: shoulder_elbow_left_joint
+    pid: {p: 100.0, i: 0.01, d: 10.0}
+  elbow_forearm_left_joint_position_controller:
+    type: position_controllers/JointPositionController
+    joint: elbow_forearm_left_joint
+    pid: {p: 100.0, i: 0.01, d: 10.0}
+  base_shoulder_right_pitch_joint_position_controller:
+    type: position_controllers/JointPositionController
+    joint: base_shoulder_right_pitch_joint
+    pid: {p: 100.0, i: 0.01, d: 10.0}
+  base_shoulder_right_joint_position_controller:
+    type: position_controllers/JointPositionController
+    joint: base_shoulder_right_joint
+    pid: {p: 100.0, i: 0.01, d: 10.0}
+  shoulder_elbow_right_joint_position_controller:
+    type: position_controllers/JointPositionController
+    joint: shoulder_elbow_right_joint
+    pid: {p: 100.0, i: 0.01, d: 10.0}
+  elbow_forearm_right_joint_position_controller:
+    type: position_controllers/JointPositionController
+    joint: elbow_forearm_right_joint
+    pid: {p: 100.0, i: 0.01, d: 10.0}
+    
+  # Joint trajectory controllers for MoveIt!
+  left_arm_controller: 
+    type: position_controllers/JointTrajectoryController
+    joints: 
+      - base_shoulder_left_pitch_joint
+      - base_shoulder_left_joint
+      - shoulder_elbow_left_joint
+      - elbow_forearm_left_joint
+    constraints:
+      - goal_time = 0
+      - stopped_velocity_tolerance = 0
+      - stop_trajectory_duration = 0
+  right_arm_controller: 
+    type: position_controllers/JointTrajectoryController
+    joints: 
+      - base_shoulder_right_pitch_joint
+      - base_shoulder_right_joint
+      - shoulder_elbow_right_joint
+      - elbow_forearm_right_joint
+    constraints:
+      - goal_time = 0
+      - stopped_velocity_tolerance = 0
+      - stop_trajectory_duration = 0
+

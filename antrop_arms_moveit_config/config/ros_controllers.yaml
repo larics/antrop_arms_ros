@@ -1,0 +1,77 @@
+left_arm:
+  type: position_controllers/JointTrajectoryController
+  joints:
+    - base_shoulder_left_pitch_joint
+    - base_shoulder_left_joint
+    - shoulder_elbow_left_joint
+    - elbow_forearm_left_joint
+  gains:
+    base_shoulder_left_pitch_joint:
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
+    base_shoulder_left_joint:
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
+    shoulder_elbow_left_joint:
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
+    elbow_forearm_left_joint:
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
+right_arm:
+  type: position_controllers/JointTrajectoryController
+  joints:
+    - base_shoulder_right_pitch_joint
+    - base_shoulder_right_joint
+    - shoulder_elbow_right_joint
+    - elbow_forearm_right_joint
+  gains:
+    base_shoulder_right_pitch_joint:
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
+    base_shoulder_right_joint:
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
+    shoulder_elbow_right_joint:
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
+    elbow_forearm_right_joint:
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
+      
+controller_list:
+  - name: antrop_arms/left_arm_controller
+    action_ns: "follow_joint_trajectory"
+    default: True
+    type: FollowJointTrajectory
+    joints:
+      - base_shoulder_left_pitch_joint
+      - base_shoulder_left_joint
+      - shoulder_elbow_left_joint
+      - elbow_forearm_left_joint
+      
+  - name: antrop_arms/right_arm_controller
+    action_ns: "follow_joint_trajectory"
+    default: True
+    type: FollowJointTrajectory
+    joints:
+      - base_shoulder_right_pitch_joint
+      - base_shoulder_right_joint
+      - shoulder_elbow_right_joint
+      - elbow_forearm_right_joint

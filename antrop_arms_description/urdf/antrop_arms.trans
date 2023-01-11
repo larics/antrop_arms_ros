@@ -1,0 +1,92 @@
+<?xml version="1.0" ?>
+<robot name="antrop_arms" xmlns:xacro="http://www.ros.org/wiki/xacro" >
+
+<transmission name="base_shoulder_left_pitch_joint_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="base_shoulder_left_pitch_joint">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="base_shoulder_left_pitch_joint_actr">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="base_shoulder_right_pitch_joint_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="base_shoulder_right_pitch_joint">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="base_shoulder_right_pitch_joint_actr">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="base_shoulder_left_joint_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="base_shoulder_left_joint">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="base_shoulder_left_joint_actr">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="shoulder_elbow_left_joint_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="shoulder_elbow_left_joint">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="shoulder_elbow_left_joint_actr">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="base_shoulder_right_joint_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="base_shoulder_right_joint">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="base_shoulder_right_joint_actr">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="shoulder_elbow_right_joint_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="shoulder_elbow_right_joint">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="shoulder_elbow_right_joint_actr">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="elbow_forearm_right_joint_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="elbow_forearm_right_joint">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="elbow_forearm_right_joint_actr">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+<transmission name="elbow_forearm_left_joint_tran">
+  <type>transmission_interface/SimpleTransmission</type>
+  <joint name="elbow_forearm_left_joint">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+  </joint>
+  <actuator name="elbow_forearm_left_joint_actr">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+  </actuator>
+</transmission>
+
+</robot>

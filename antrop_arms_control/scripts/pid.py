@@ -1,5 +1,5 @@
 from datetime import datetime
-from antrop_arms_description.msg import PIDController
+from antrop_arms_control.msg import PIDController
 import rospy
 
 

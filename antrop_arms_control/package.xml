@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="2">
+    <name>antrop_arms_control</name>
+    <version>0.0.0</version>
+    <description>Antrop arms control pkg</description>
+
+    <maintainer email="filip.zoric@fer.hr">Filip Zoric</maintainer>
+    <maintainer email="luka.maric@fer.hr">Luka Maric</maintainer>
+
+    <license>TODO</license>
+
+    <buildtool_depend>catkin</buildtool_depend>
+    <depend>message_runtime</depend>
+    <depend>message_generation</depend>
+    <depend>std_msgs</depend>
+    <depend>rospy</depend>
+
+</package>

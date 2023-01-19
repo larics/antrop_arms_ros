@@ -1,0 +1,15 @@
+<launch>
+
+    <arg name="rviz" value="false"/>
+
+    <include file="$(find antrop_arms_control)/launch/controller.launch"></include>
+
+    <include file="$(find antrop_arms_description)/launch/gazebo.launch"></include>
+
+    <include file="$(find antrop_arms_moveit_config)/launch/move_group.launch"></include>
+
+    <group if="$(arg rviz)">
+        <include file="$(find antrop_arms_moveit_config)/launch/moveit_rviz.launch"></include>
+    </group>
+
+</launch>

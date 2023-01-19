@@ -25,7 +25,7 @@ roslaunch antrop_arms_description gazebo.launch
 ```
 
 ```bash
-roslaunch antrop_arms_description controller.launch
+roslaunch antrop_arms_control controller.launch
 ```
 
 ```bash
@@ -35,6 +35,12 @@ roslaunch antrop_arms_moveit_config move_group.launch
 ```bash
 roslaunch antrop_arms_moveit_config moveit_rviz.launch
 ```
+
+## or just run: 
+```
+roslaunch antrop_arms_control antrop_arms_gazebo_control.launch 
+```
+to start everything. 
 
 Currently there are two types of controllers implemented: 
 

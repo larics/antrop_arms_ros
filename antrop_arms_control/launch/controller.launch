@@ -1,24 +1,33 @@
 <?xml version="1.0"?>
 <launch>
 
+    <arg name="pid" value="true"/>
+
     <rosparam file="$(find antrop_arms_control)/config/controller.yaml" command="load"/>
 
-    <node name="controller_spawner" pkg="controller_manager" type="controller_manager" respawn="false"
-        output="screen" ns="antrop_arms" args="spawn base_shoulder_left_joint_position_controller
-                                                     shoulder_elbow_left_joint_position_controller
-                                                     base_shoulder_right_joint_position_controller
-                                                     shoulder_elbow_right_joint_position_controller
-                                                     elbow_forearm_left_joint_position_controller
-                                                     elbow_forearm_right_joint_position_controller
-                                                     base_shoulder_left_pitch_joint_position_controller
-                                                     base_shoulder_right_pitch_joint_position_controller
-                                                     joint_state_controller "/>
+    <group if="$(arg pid)">
+        <rosparam file="$(find antrop_arms_control)/config/pid_gains.yaml" command="load"/>
+    </group>
+
+    <!-- Initialize stopped individual joint controllers -->
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+        output="screen" ns="antrop_arms" args="--stopped base_shoulder_left_joint_position_controller
+                                                        shoulder_elbow_left_joint_position_controller
+                                                        base_shoulder_right_joint_position_controller
+                                                        shoulder_elbow_right_joint_position_controller
+                                                        elbow_forearm_left_joint_position_controller
+                                                        elbow_forearm_right_joint_position_controller
+                                                        base_shoulder_left_pitch_joint_position_controller
+                                                        base_shoulder_right_pitch_joint_position_controller
+                                                      "/>
 
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
         <remap from="/joint_states" to="/antrop_arms/joint_states"/>
     </node>
+
     <!-- Load joint_position_controllers for both arms! -->
-    <node name="ros_control_controller_manager" pkg="controller_manager" type="controller_manager" respawn="false"
-          output="screen" ns="antrop_arms" args="start left_arm_controller right_arm_controller"/>
+    <!-- spawner initalizes and starts controllers -->
+    <node name="ros_control_controller_manager" pkg="controller_manager" type="spawner" respawn="false"
+          output="screen" ns="antrop_arms" args="left_arm_controller right_arm_controller joint_state_controller"/>
 
 </launch>

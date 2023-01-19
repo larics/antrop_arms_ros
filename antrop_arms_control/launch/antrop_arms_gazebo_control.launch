@@ -1,6 +1,7 @@
 <launch>
 
     <arg name="rviz" value="false"/>
+    <arg name="pid" value="true"/>
 
     <include file="$(find antrop_arms_control)/launch/controller.launch"></include>
 

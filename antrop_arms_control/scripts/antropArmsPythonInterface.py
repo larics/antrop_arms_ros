@@ -1,3 +1,4 @@
+import sys
 import rospy
 import moveit_commander
 import moveit_msgs.msg
@@ -60,6 +61,7 @@ class AntropArmsPythonInterface(object):
         rospy.loginfo("Available groups are: {}".format(available_groups))
 
         # Variables for practical use later in the code!
+        self.rate = rospy.Rate(20)
         self.deltaT = (1 / 20)
         self.robot = robot
         self.frame_id = "world"
@@ -417,12 +419,15 @@ class AntropArmsPythonInterface(object):
         rospy.loginfo("Computed Jacobian matrix for the given joint state: {}".format(jacobianMatrix))
         return jacobianMatrix
 
+    def servoCtl(self):
+        # TODO: Add all those methods for servo ctl
+        pass
+
     def run(self):
         """
         """
         try:
-            while 1:
-                time.sleep(2)
+            while not rospy.is_shutdown():
                 rospy.loginfo("Starting the AntropArmsPythonInterface!")
                 # TODO: Keep the subscribers running! Update: When spin() is on it doesn't work?
                 # rospy.spin()
@@ -433,77 +438,68 @@ class AntropArmsPythonInterface(object):
                 endTime = time.time()
                 elapsed = endTime - startTime
                 rospy.loginfo("Elapsed time: {}".format(elapsed))
-                rate = rospy.Rate(20)
+                currentPose = self.getCurrentPose()
+                self.current_pose_publisher.publish(currentPose)
                 if self.active_controller == "servo":
-                    while not rospy.is_shutdown():
-                        if self.active_controller == "servo":
-                            pass
-                        else:
-                            break
-                        # Necessary overhead since it has to be calculated for each iteration?
-                        currentJointState = self.getCurrentJointStates()
-                        inverseJacobian = np.linalg.pinv(self.getJacobianMatrix(currentJointState))
-                        # Publishing the current ee pose!
-                        currentPose = self.getCurrentPose()
-                        formattedCurrentPose = np.array(
-                            [currentPose.position.x, currentPose.position.y, currentPose.position.z,
-                             currentPose.orientation.x, currentPose.orientation.y,
-                             currentPose.orientation.z, currentPose.orientation.w])
-                        rospy.loginfo("Current pose: {}".format(currentPose))
-                        # print("Current pose position: {}".format(currentPose.position))
-                        self.current_pose_publisher.publish(currentPose)
-                        # TODO: Check where the best placement for this rate.sleep() is?
-                        rate.sleep()  # Not really sure how it affects the run time considering other overhead
-                        # Fetching the reference pose and passing it to the PID controller
-                        if not self.reference_pose == None:
-                            formattedReferecePose = np.array(
-                                [self.reference_pose.position.x, self.reference_pose.position.y,
-                                 self.reference_pose.position.z,
-                                 self.reference_pose.orientation.x, self.reference_pose.orientation.y,
-                                 self.reference_pose.orientation.z, self.reference_pose.orientation.w])
-                            # Calculate positional errors
-                            eePositionX = self.pid_controller_x.compute(formattedReferecePose[0],
-                                                                        formattedCurrentPose[0])
-                            eePositionY = self.pid_controller_y.compute(formattedReferecePose[1],
-                                                                        formattedCurrentPose[1])
-                            eePositionZ = self.pid_controller_z.compute(formattedReferecePose[2],
-                                                                        formattedCurrentPose[2])
-                            # Logging
-                            rospy.loginfo("This is what the normal subtraction shows:{}".format(
-                                formattedReferecePose - formattedCurrentPose))
-                            rospy.loginfo("EE Position error x: {}".format(eePositionX))
-                            rospy.loginfo("EE Position error y: {}".format(eePositionY))
-                            rospy.loginfo("EE Position error z: {}".format(eePositionZ))
-                            # TODO: Remove the hard coded orientation down the line
-                            eeVelocityVector = np.array([eePositionX, eePositionY, eePositionZ, 0, 0, 0])
-                            rospy.loginfo("EE velocity vector: {}".format(eeVelocityVector))
-                            jointVelocity = np.dot(inverseJacobian, eeVelocityVector)
-                            rospy.loginfo("Joint velocity vector: {}".format(jointVelocity))
-                            # Calculate the delta joint state
-                            newJointState = np.dot(jointVelocity, self.deltaT)
-                            # TODO: Add code for passing the joint states!
-                            self.left_arm_shoulder.publish(newJointState[0])
-                            self.left_arm_shoulder_pitch.publish(newJointState[1])
-                            self.left_arm_shoulder_elbow.publish(newJointState[2])
-                            self.left_arm_elbow_forearm.publish(newJointState[3])
+                    # Necessary overhead since it has to be calculated for each iteration?
+                    currentJointState = self.getCurrentJointStates()
+                    inverseJacobian = np.linalg.pinv(self.getJacobianMatrix(currentJointState))
+                    # Publishing the current ee pose!
 
-                        else:
-                            rospy.logwarn("No reference given!")
-                        # TODO: Remove this sleep after debugging, or switch it for the rate.sleep()
-                        time.sleep(5)
+                    formattedCurrentPose = np.array(
+                        [currentPose.position.x, currentPose.position.y, currentPose.position.z,
+                         currentPose.orientation.x, currentPose.orientation.y,
+                         currentPose.orientation.z, currentPose.orientation.w])
+                    rospy.loginfo("Current pose: {}".format(currentPose))
+                    # print("Current pose position: {}".format(currentPose.position))
+
+                    # Fetching the reference pose and passing it to the PID controller
+                    if not self.reference_pose == None:
+                        formattedReferecePose = np.array(
+                            [self.reference_pose.position.x, self.reference_pose.position.y,
+                             self.reference_pose.position.z,
+                             self.reference_pose.orientation.x, self.reference_pose.orientation.y,
+                             self.reference_pose.orientation.z, self.reference_pose.orientation.w])
+                        # Calculate positional errors
+                        eePositionX = self.pid_controller_x.compute(formattedReferecePose[0],
+                                                                    formattedCurrentPose[0])
+                        eePositionY = self.pid_controller_y.compute(formattedReferecePose[1],
+                                                                    formattedCurrentPose[1])
+                        eePositionZ = self.pid_controller_z.compute(formattedReferecePose[2],
+                                                                    formattedCurrentPose[2])
+                        # Logging
+                        rospy.loginfo("This is what the normal subtraction shows:{}".format(
+                            formattedReferecePose - formattedCurrentPose))
+                        rospy.loginfo("EE Position error x: {}".format(eePositionX))
+                        rospy.loginfo("EE Position error y: {}".format(eePositionY))
+                        rospy.loginfo("EE Position error z: {}".format(eePositionZ))
+                        # TODO: Remove the hard coded orientation down the line
+                        eeVelocityVector = np.array([eePositionX, eePositionY, eePositionZ, 0, 0, 0])
+                        rospy.loginfo("EE velocity vector: {}".format(eeVelocityVector))
+                        jointVelocity = np.dot(inverseJacobian, eeVelocityVector)
+                        rospy.loginfo("Joint velocity vector: {}".format(jointVelocity))
+                        # Calculate the delta joint state
+                        newJointState = np.dot(jointVelocity, self.deltaT)
+                        # TODO: Add code for passing the joint states!
+                        self.left_arm_shoulder.publish(newJointState[0])
+                        self.left_arm_shoulder_pitch.publish(newJointState[1])
+                        self.left_arm_shoulder_elbow.publish(newJointState[2])
+                        self.left_arm_elbow_forearm.publish(newJointState[3])
+
+                    else:
+                        rospy.logwarn("No reference given!")
 
                 elif self.active_controller == "trajectory":
                     rospy.loginfo("Again entering trajectory!")
-                    while 1:
-                        if self.active_controller == "trajectory":
-                            rospy.loginfo("Still no trajectory implemented, switch to servo!")
-                            pass
-                        else:
-                            break
-                        time.sleep(2)
+
+                    if self.active_controller == "trajectory":
+                        rospy.loginfo("Still no trajectory implemented, switch to servo!")
+                        pass
 
                 else:
                     rospy.logerr("The active controller: {}, isn't defined!".format(self.active_controller))
+
+                self.rate.sleep()
 
             # achievableJointState = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053]
             # Forward kinematics

@@ -5,13 +5,13 @@ Table of contents:
 - Prerequisites & Dependencies 
 - How-to
 
-### Prerequisites & Dependencies :
+### Prerequisites & Dependencies 
 
 For simplification of the environment setup process which is initially the biggest hurdle when beginning to work on a project with multiple team members, we use the Docker platform with a prebuilt "Docker Image". 
 
 **Insert Docker tutorial or link to Filips' repo where he goes over this part**
 
-### How-to:
+### How-to
 
 This section handles the topic of correctly running the necessary scripts/launch files to simplfy the introduction process for future developers & users.
 
@@ -36,7 +36,7 @@ roslaunch antrop_arms_moveit_config move_group.launch
 roslaunch antrop_arms_moveit_config moveit_rviz.launch
 ```
 
-## or just run: 
+## or just run
 ```
 roslaunch antrop_arms_control antrop_arms_gazebo_control.launch 
 ```

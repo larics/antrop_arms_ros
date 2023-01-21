@@ -75,11 +75,6 @@ class AntropArmsPythonInterface(object):
         self.ee_link = []
         self.ee_link.append(ee_link)
         self.available_groups = available_groups
-        self.correction_matrix = np.matrix([[1, 0, 0, 0],
-                                            [0, 1, 0, 0],
-                                            [0, 0, 1, 1.5],
-                                            [0, 0, 0, 1]])
-        # self.DH_matrix = self.correction_matrix * np.matrix([[]])
         # Reference pose
         self.reference_pose = None
         # Initiate services
@@ -104,7 +99,7 @@ class AntropArmsPythonInterface(object):
         self.pid_controller_z.set_ki(0)
         self.pid_controller_z.set_kd(0)
         # Active controller:
-        self.active_controller = "trajectory"
+        self.robot_state = "trajectory"
         # Controllers:
         self.joint_position_controllers = [
             'base_shoulder_left_joint_position_controller',
@@ -145,7 +140,7 @@ class AntropArmsPythonInterface(object):
     def _init_publishers(self):
 
         try:
-            # Check for argument: latch=True
+            # TODO: Check for argument: latch=True
             # Current pose publisher
             self.current_pose_publisher = rospy.Publisher("/{}/pose/current".format(self.formatted_group_name), Pose,
                                                           queue_size=10)
@@ -207,8 +202,8 @@ class AntropArmsPythonInterface(object):
                                                                       self.follow_trajectory_controllers)
             responseServo = self.switchControllerService(switchToServoRequest)
             rospy.loginfo("The response for calling the servoRequest: {}".format(responseServo))
-            self.active_controller = "servo"
-            rospy.loginfo("Started controllers: {}".format(self.active_controller))
+            self.robot_state = "servo"
+            rospy.loginfo("Started controllers for: {}".format(self.robot_state))
 
         elif selected_controller.data == "trajectory":
             rospy.loginfo("Selected the trajectory controller, attempting to activate!")
@@ -216,12 +211,11 @@ class AntropArmsPythonInterface(object):
                                                                            self.joint_position_controllers)
             responseTrajectory = self.switchControllerService(switchToTrajectoryRequest)
             rospy.loginfo("The response for calling the servoRequest: {}".format(responseTrajectory))
-            self.active_controller = "trajectory"
-            rospy.loginfo("Started controllers: {}".format(self.active_controller))
+            self.robot_state = "trajectory"
+            rospy.loginfo("Started controllers for: {}".format(self.robot_state))
 
         else:
             rospy.logerr("Incorrect controller selected! Received: {}".format(selected_controller))
-            rospy.loginfo("The passed 'servo' is of type: {}".format(type(selected_controller)))
 
     def poolReferencePose(self, reference):
         self.reference_pose = reference
@@ -419,107 +413,76 @@ class AntropArmsPythonInterface(object):
         rospy.loginfo("Computed Jacobian matrix for the given joint state: {}".format(jacobianMatrix))
         return jacobianMatrix
 
-    def servoCtl(self):
-        # TODO: Add all those methods for servo ctl
-        pass
+    def servoCtl(self, currentRobotPose):
+        # Necessary overhead since it has to be calculated for each iteration?
+        currentJointState = self.getCurrentJointStates()
+        inverseJacobian = np.linalg.pinv(self.getJacobianMatrix(currentJointState))
+        # Publishing the current ee pose!
+
+        formattedCurrentPose = np.array(
+            [currentRobotPose.position.x, currentRobotPose.position.y, currentRobotPose.position.z,
+             currentRobotPose.orientation.x, currentRobotPose.orientation.y,
+             currentRobotPose.orientation.z, currentRobotPose.orientation.w])
+        rospy.loginfo("Current pose: {}".format(currentRobotPose))
+        # Fetching the reference pose and passing it to the PID controller
+        if not self.reference_pose == None:
+            formattedReferecePose = np.array(
+                [self.reference_pose.position.x, self.reference_pose.position.y,
+                 self.reference_pose.position.z,
+                 self.reference_pose.orientation.x, self.reference_pose.orientation.y,
+                 self.reference_pose.orientation.z, self.reference_pose.orientation.w])
+            # Calculate positional errors
+            eePositionX = self.pid_controller_x.compute(formattedReferecePose[0],
+                                                        formattedCurrentPose[0])
+            eePositionY = self.pid_controller_y.compute(formattedReferecePose[1],
+                                                        formattedCurrentPose[1])
+            eePositionZ = self.pid_controller_z.compute(formattedReferecePose[2],
+                                                        formattedCurrentPose[2])
+            # Logging
+            rospy.loginfo("This is what the normal subtraction shows:{}".format(
+                formattedReferecePose - formattedCurrentPose))
+            rospy.loginfo("EE Position error x: {}".format(eePositionX))
+            rospy.loginfo("EE Position error y: {}".format(eePositionY))
+            rospy.loginfo("EE Position error z: {}".format(eePositionZ))
+            # TODO: Remove the hard coded orientation down the line
+            eeVelocityVector = np.array([eePositionX, eePositionY, eePositionZ, 0, 0, 0])
+            rospy.loginfo("EE velocity vector: {}".format(eeVelocityVector))
+            jointVelocity = np.dot(inverseJacobian, eeVelocityVector)
+            rospy.loginfo("Joint velocity vector: {}".format(jointVelocity))
+            # Calculate the delta joint state
+            newJointState = np.dot(jointVelocity, self.deltaT)
+            # Publish the calculated deltaJointStates + currentJointState in order to move to target ee position
+            self.left_arm_shoulder.publish(currentJointState[0] + newJointState[0])
+            self.left_arm_shoulder_pitch.publish(currentJointState[1] + newJointState[1])
+            self.left_arm_shoulder_elbow.publish(currentJointState[2] + newJointState[2])
+            self.left_arm_elbow_forearm.publish(currentJointState[3] + newJointState[3])
+
+        else:
+            rospy.logwarn("No reference given!")
 
     def run(self):
         """
         """
         try:
+            rospy.loginfo("Starting the AntropArmsPythonInterface!")
+            rospy.loginfo("Initiated with {} robot state.".format(self.robot_state))
+
             while not rospy.is_shutdown():
-                rospy.loginfo("Starting the AntropArmsPythonInterface!")
-                # TODO: Keep the subscribers running! Update: When spin() is on it doesn't work?
-                # rospy.spin()
-                rospy.loginfo("Currently activated controller: {}".format(self.active_controller))
-                testCurrentJointStates = self.getCurrentJointStates()
-                startTime = time.time()
-                self.getJacobianMatrix(testCurrentJointStates)
-                endTime = time.time()
-                elapsed = endTime - startTime
-                rospy.loginfo("Elapsed time: {}".format(elapsed))
+                # Publish current pose irregardless of the currently active robot state!
                 currentPose = self.getCurrentPose()
                 self.current_pose_publisher.publish(currentPose)
-                if self.active_controller == "servo":
-                    # Necessary overhead since it has to be calculated for each iteration?
-                    currentJointState = self.getCurrentJointStates()
-                    inverseJacobian = np.linalg.pinv(self.getJacobianMatrix(currentJointState))
-                    # Publishing the current ee pose!
+                # Enter corresponding operation mode depending on robot state!
+                if self.robot_state == "servo":
+                    self.servoCtl(currentPose)
 
-                    formattedCurrentPose = np.array(
-                        [currentPose.position.x, currentPose.position.y, currentPose.position.z,
-                         currentPose.orientation.x, currentPose.orientation.y,
-                         currentPose.orientation.z, currentPose.orientation.w])
-                    rospy.loginfo("Current pose: {}".format(currentPose))
-                    # print("Current pose position: {}".format(currentPose.position))
-
-                    # Fetching the reference pose and passing it to the PID controller
-                    if not self.reference_pose == None:
-                        formattedReferecePose = np.array(
-                            [self.reference_pose.position.x, self.reference_pose.position.y,
-                             self.reference_pose.position.z,
-                             self.reference_pose.orientation.x, self.reference_pose.orientation.y,
-                             self.reference_pose.orientation.z, self.reference_pose.orientation.w])
-                        # Calculate positional errors
-                        eePositionX = self.pid_controller_x.compute(formattedReferecePose[0],
-                                                                    formattedCurrentPose[0])
-                        eePositionY = self.pid_controller_y.compute(formattedReferecePose[1],
-                                                                    formattedCurrentPose[1])
-                        eePositionZ = self.pid_controller_z.compute(formattedReferecePose[2],
-                                                                    formattedCurrentPose[2])
-                        # Logging
-                        rospy.loginfo("This is what the normal subtraction shows:{}".format(
-                            formattedReferecePose - formattedCurrentPose))
-                        rospy.loginfo("EE Position error x: {}".format(eePositionX))
-                        rospy.loginfo("EE Position error y: {}".format(eePositionY))
-                        rospy.loginfo("EE Position error z: {}".format(eePositionZ))
-                        # TODO: Remove the hard coded orientation down the line
-                        eeVelocityVector = np.array([eePositionX, eePositionY, eePositionZ, 0, 0, 0])
-                        rospy.loginfo("EE velocity vector: {}".format(eeVelocityVector))
-                        jointVelocity = np.dot(inverseJacobian, eeVelocityVector)
-                        rospy.loginfo("Joint velocity vector: {}".format(jointVelocity))
-                        # Calculate the delta joint state
-                        newJointState = np.dot(jointVelocity, self.deltaT)
-                        # TODO: Add code for passing the joint states!
-                        self.left_arm_shoulder.publish(newJointState[0])
-                        self.left_arm_shoulder_pitch.publish(newJointState[1])
-                        self.left_arm_shoulder_elbow.publish(newJointState[2])
-                        self.left_arm_elbow_forearm.publish(newJointState[3])
-
-                    else:
-                        rospy.logwarn("No reference given!")
-
-                elif self.active_controller == "trajectory":
-                    rospy.loginfo("Again entering trajectory!")
-
-                    if self.active_controller == "trajectory":
-                        rospy.loginfo("Still no trajectory implemented, switch to servo!")
-                        pass
+                elif self.robot_state == "trajectory":
+                    rospy.loginfo("Currently trajectory is not handled! Switch to servo.")
+                    pass
 
                 else:
-                    rospy.logerr("The active controller: {}, isn't defined!".format(self.active_controller))
+                    rospy.logerr("The active controller: {}, isn't defined!".format(self.robot_state))
 
                 self.rate.sleep()
-
-            # achievableJointState = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053]
-            # Forward kinematics
-            # self.getFK(achievableJointState)
-            # Move by feeding joint states
-            # self.moveToJointStateGoal(achievableJointState)
-            # self.getCurrentPose()
-            # testCurrentJointStates = self.getCurrentJointStates()
-            # Working pose for "left_arm" group:
-            # Position: x=-0.3196075296701223, y=0.36576859700616704, z=1.2952693892762086
-            # Orientation: x=0.1446269355378438, y=0.10098839507898862, z=-0.13750360498404174, w=0.9746677137325802
-            # position = [-0.3196075296701223, 0.36576859700616704, 1.2952693892762086, 0.1446269355378438, 0.10098839507898862,
-            #            -0.13750360498404174, 0.9746677137325802]
-            # Inverse kinematics
-            # self.getIK(position, testCurrentJointStates)
-            # Move by feeding end-effector pose
-            # self.moveToCartesianPose(position)
-            # self.moveToCartesianPose(position)  # Second one just in case the first planning fails until attempts are added!
-            # self.getCurrentPose()
-
 
         except Exception as e:
             rospy.logerr("Failed during run() method execution: {}".format(e))

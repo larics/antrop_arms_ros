@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(antrop_arms_control)
 
-find_package(catkin REQUIRED message_generation std_msgs rospy roscpp)
+find_package(catkin REQUIRED message_generation std_msgs rospy roscpp dynamic_reconfigure)
 
 add_message_files(
         FILES
@@ -11,6 +11,10 @@ add_message_files(
 generate_messages(
         DEPENDENCIES
         std_msgs
+)
+
+generate_dynamic_reconfigure_options(
+	cfg/DynamicReconfigurePid.cfg
 )
 
 catkin_package(

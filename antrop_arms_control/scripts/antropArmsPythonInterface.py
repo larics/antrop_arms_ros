@@ -15,7 +15,9 @@ from moveit_msgs.srv import GetPositionFK, GetPositionFKRequest, GetPositionIK, 
 from tf import TransformListener
 from pid import PID
 from controller_manager_msgs.srv import SwitchController, SwitchControllerRequest
-
+# Dynamic reconfigure imports
+from antrop_arms_control.cfg import DynamicReconfigurePidConfig
+from dynamic_reconfigure.server import Server
 """
 RELEVANT SOURCES:
 https://github.com/ros-planning/moveit_commander/blob/indigo-devel/src/moveit_commander/move_group.py
@@ -59,10 +61,11 @@ class AntropArmsPythonInterface(object):
         rospy.loginfo("End effector is: {}".format(ee_link))
         available_groups = robot.get_group_names()
         rospy.loginfo("Available groups are: {}".format(available_groups))
-
+        # Dynamic reconfigure flag
+        self.config_start = False
         # Variables for practical use later in the code!
         self.rate = rospy.Rate(20)
-        self.deltaT = (1 / 20)
+        self.delta_T = (1 / 20)
         self.robot = robot
         self.frame_id = "world"
         self.scene = scene
@@ -98,6 +101,23 @@ class AntropArmsPythonInterface(object):
         self.pid_controller_z.set_kp(0.1)
         self.pid_controller_z.set_ki(0)
         self.pid_controller_z.set_kd(0)
+        # Orientation Roll
+        self.pid_controller_roll = PID()
+        self.pid_controller_roll.set_kp(0.1)
+        self.pid_controller_roll.set_ki(0)
+        self.pid_controller_roll.set_kd(0)
+        # Orientation Pitch
+        self.pid_controller_pitch = PID()
+        self.pid_controller_pitch.set_kp(0.1)
+        self.pid_controller_pitch.set_ki(0)
+        self.pid_controller_pitch.set_kd(0)
+        # Orientation Yaw
+        self.pid_controller_yaw = PID()
+        self.pid_controller_yaw.set_kp(0.1)
+        self.pid_controller_yaw.set_ki(0)
+        self.pid_controller_yaw.set_kd(0)
+        # Init servers
+        self._init_servers()
         # Active controller:
         self.robot_state = "trajectory"
         # Controllers:
@@ -181,6 +201,70 @@ class AntropArmsPythonInterface(object):
 
         finally:
             rospy.loginfo("All subscribers initiated correctly!")
+
+    def _init_servers(self):
+        self.cfg_server = Server(DynamicReconfigurePidConfig, self.cfg_callback)
+
+    def cfg_callback(self, config, level):
+        """
+
+        """
+        if not self.config_start:
+            # Position x
+            config.position_x_p = self.pid_controller_x.get_kp()
+            config.position_x_i = self.pid_controller_x.get_ki()
+            config.position_x_d = self.pid_controller_x.get_kd()
+            # Position y
+            config.position_y_p = self.pid_controller_y.get_kp()
+            config.position_y_i = self.pid_controller_y.get_ki()
+            config.position_y_d = self.pid_controller_y.get_kd()
+            # Position z
+            config.position_z_p = self.pid_controller_z.get_kp()
+            config.position_z_i = self.pid_controller_z.get_ki()
+            config.position_z_d = self.pid_controller_z.get_kd()
+            # Orientation - Roll
+            config.orientation_roll_p = self.pid_controller_roll.get_kp()
+            config.orientation_roll_i = self.pid_controller_roll.get_ki()
+            config.orientation_roll_d = self.pid_controller_roll.get_kd()
+            # Orientation - Pitch
+            config.orientation_pitch_p = self.pid_controller_pitch.get_kp()
+            config.orientation_pitch_i = self.pid_controller_pitch.get_ki()
+            config.orientation_pitch_d = self.pid_controller_pitch.get_kd()
+            # Orientation - Yaw
+            config.orientation_yaw_p = self.pid_controller_yaw.get_kp()
+            config.orientation_yaw_i = self.pid_controller_yaw.get_ki()
+            config.orientation_yaw_d = self.pid_controller_yaw.get_kd()
+            # Config filled with initial values
+            self.config_start = True
+        # New parameter values
+        else:
+            # Position x
+            self.pid_controller_x.set_kp(config.position_x_p)
+            self.pid_controller_x.set_ki(config.position_x_i)
+            self.pid_controller_x.set_kd(config.position_x_d)
+            # Position y
+            self.pid_controller_y.set_kp(config.position_y_p)
+            self.pid_controller_y.set_ki(config.position_y_i)
+            self.pid_controller_y.set_kd(config.position_y_d)
+            # Position z
+            self.pid_controller_z.set_kp(config.position_z_p)
+            self.pid_controller_z.set_ki(config.position_z_i)
+            self.pid_controller_z.set_kd(config.position_z_d)
+            # Orientation - Roll
+            self.pid_controller_roll.set_kp(config.orientation_roll_p)
+            self.pid_controller_roll.set_ki(config.orientation_roll_i)
+            self.pid_controller_roll.set_kd(config.orientation_roll_d)
+            # Orientation - Pitch
+            self.pid_controller_pitch.set_kp(config.orientation_pitch_p)
+            self.pid_controller_pitch.set_ki(config.orientation_pitch_i)
+            self.pid_controller_pitch.set_kd(config.orientation_pitch_d)
+            # Orientation - Yaw
+            self.pid_controller_yaw.set_kp(config.orientation_yaw_p)
+            self.pid_controller_yaw.set_ki(config.orientation_yaw_i)
+            self.pid_controller_yaw.set_kd(config.orientation_yaw_d)
+
+        return config
+
 
     def createSwitchControllerRequest(self, start_controllers, stop_controllers):
         """
@@ -417,8 +501,10 @@ class AntropArmsPythonInterface(object):
         # Necessary overhead since it has to be calculated for each iteration?
         currentJointState = self.getCurrentJointStates()
         inverseJacobian = np.linalg.pinv(self.getJacobianMatrix(currentJointState))
-        # Publishing the current ee pose!
-
+        # Fetch the current end effector RPY orientation; type: List (3x1)
+        currentEeOrientationRPY = self.group.get_current_rpy()
+        rospy.loginfo("Current RPY of the EE is: {}".format(currentEeOrientationRPY))
+        #
         formattedCurrentPose = np.array(
             [currentRobotPose.position.x, currentRobotPose.position.y, currentRobotPose.position.z,
              currentRobotPose.orientation.x, currentRobotPose.orientation.y,
@@ -438,6 +524,12 @@ class AntropArmsPythonInterface(object):
                                                         formattedCurrentPose[1])
             eePositionZ = self.pid_controller_z.compute(formattedReferecePose[2],
                                                         formattedCurrentPose[2])
+            # Calculate orientation errors
+            # TODO: Replace placeholder with real reference RPY
+            placeholderEeOrientation = [0.12993158567374422, -0.505918787742537, -0.037960830632892635]
+            eeRollOrientation = self.pid_controller_roll.compute(currentEeOrientationRPY[0], placeholderEeOrientation[0])
+            eePitchOrientation = self.pid_controller_pitch.compute(currentEeOrientationRPY[1], placeholderEeOrientation[1])
+            eeYawOrientation = self.pid_controller_yaw.compute(currentEeOrientationRPY[2], placeholderEeOrientation[2])
             # Logging
             rospy.loginfo("This is what the normal subtraction shows:{}".format(
                 formattedReferecePose - formattedCurrentPose))
@@ -445,13 +537,15 @@ class AntropArmsPythonInterface(object):
             rospy.loginfo("EE Position error y: {}".format(eePositionY))
             rospy.loginfo("EE Position error z: {}".format(eePositionZ))
             # TODO: Remove the hard coded orientation down the line
-            eeVelocityVector = np.array([eePositionX, eePositionY, eePositionZ, 0, 0, 0])
+            eeVelocityVector = np.array(
+                [eePositionX, eePositionY, eePositionZ, eeRollOrientation, eePitchOrientation, eeYawOrientation])
             rospy.loginfo("EE velocity vector: {}".format(eeVelocityVector))
             jointVelocity = np.dot(inverseJacobian, eeVelocityVector)
             rospy.loginfo("Joint velocity vector: {}".format(jointVelocity))
             # Calculate the delta joint state
-            newJointState = np.dot(jointVelocity, self.deltaT)
+            newJointState = np.dot(jointVelocity, self.delta_T)
             # Publish the calculated deltaJointStates + currentJointState in order to move to target ee position
+            rospy.loginfo("Publishing to joints!")
             self.left_arm_shoulder.publish(currentJointState[0] + newJointState[0])
             self.left_arm_shoulder_pitch.publish(currentJointState[1] + newJointState[1])
             self.left_arm_shoulder_elbow.publish(currentJointState[2] + newJointState[2])

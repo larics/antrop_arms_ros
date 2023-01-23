@@ -49,21 +49,15 @@ Currently there are two types of controllers implemented:
 
 **Switching controllers in real time**
 
-With the following command we switch from the JointPoisionController to the JointTrajectoryController groups:
+With the following command we switch to a different robot state ("servo" or "trajectory"):
 
 ```bash
-rosservice call /antrop_arms/controller_manager/switch_controller "start_controllers:                                                                                                                                                                                                  
-- 'left_arm_controller'
-- 'right_arm_controller'                                      
-stop_controllers:                                                   
-- 'base_shoulder_left_joint_position_controller'
-- 'shoulder_elbow_left_joint_position_controller'
-- 'base_shoulder_right_joint_position_controller'
-- 'shoulder_elbow_right_joint_position_controller'
-- 'elbow_forearm_left_joint_position_controller'
-- 'elbow_forearm_right_joint_position_controller'
-- 'base_shoulder_left_pitch_joint_position_controller'
-- 'base_shoulder_right_pitch_joint_position_controller'                                      
-strictness: 2"
+rostopic pub /controller/manager std_msgs/String "data: 'servo'"
+```
+
+The reference end effector pose is published like this:
+
+```bash
+rostopic pub /leftArm/pose/command geometry_msgs/Pose '{position: {x: -0.015477585470365042, y: 0.20000465570310144, z: 0.9574995401539291}, orientation: {x: 4.290960271475719e-06, y: -2.104719545481403e-05, z: 5.425674097403264e-07, w: 0.9999999997691544}}'
 ```
 

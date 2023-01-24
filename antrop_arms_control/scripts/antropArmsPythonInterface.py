@@ -55,8 +55,11 @@ class AntropArmsPythonInterface(object):
         display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
                                                        moveit_msgs.msg.DisplayTrajectory,
                                                        queue_size=20)
+
         planning_frame = group.get_planning_frame()
         rospy.loginfo("Reference frame is: {}".format(planning_frame))
+        # Checking which frames are available to be set for reference frames
+        rospy.loginfo("Available frames are: {}".format(robot.get_link_names()))
         ee_link = group.get_end_effector_link()
         rospy.loginfo("End effector is: {}".format(ee_link))
         available_groups = robot.get_group_names()
@@ -533,10 +536,10 @@ class AntropArmsPythonInterface(object):
                                                         formattedCurrentPose[2])
             # Calculate orientation errors
             # TODO: Replace placeholder with real reference RPY
-            placeholderEeOrientation = [0.12993158567374422, -0.505918787742537, -0.037960830632892635]
-            eeRollOrientation = self.pid_controller_roll.compute(currentEeOrientationRPY[0], placeholderEeOrientation[0])
-            eePitchOrientation = self.pid_controller_pitch.compute(currentEeOrientationRPY[1], placeholderEeOrientation[1])
-            eeYawOrientation = self.pid_controller_yaw.compute(currentEeOrientationRPY[2], placeholderEeOrientation[2])
+            #placeholderEeOrientation = [0.12993158567374422, -0.505918787742537, -0.037960830632892635]
+            #eeRollOrientation = self.pid_controller_roll.compute(currentEeOrientationRPY[0], placeholderEeOrientation[0])
+            #eePitchOrientation = self.pid_controller_pitch.compute(currentEeOrientationRPY[1], placeholderEeOrientation[1])
+            #eeYawOrientation = self.pid_controller_yaw.compute(currentEeOrientationRPY[2], placeholderEeOrientation[2])
             # Logging
             rospy.loginfo("This is what the normal subtraction shows:{}".format(
                 formattedReferecePose - formattedCurrentPose))
@@ -545,12 +548,12 @@ class AntropArmsPythonInterface(object):
             rospy.loginfo("EE Position error z: {}".format(eePositionZ))
             # TODO: Remove the hard coded orientation down the line
             eeVelocityVector = np.array(
-                [eePositionX, eePositionY, eePositionZ, eeRollOrientation, eePitchOrientation, eeYawOrientation])
+                [eePositionX, eePositionY, eePositionZ, 0, 0, 0])
             rospy.loginfo("EE velocity vector: {}".format(eeVelocityVector))
             jointVelocity = np.dot(inverseJacobian, eeVelocityVector)
             rospy.loginfo("Joint velocity vector: {}".format(jointVelocity))
             # Calculate the delta joint state
-            newJointState = np.dot(jointVelocity, self.delta_T)
+            newJointState = jointVelocity# np.dot(jointVelocity, self.delta_T)
             # Publish the calculated deltaJointStates + currentJointState in order to move to target ee position
             rospy.loginfo("Publishing to joints!")
             self.left_arm_shoulder.publish(currentJointState[0] + newJointState[0])

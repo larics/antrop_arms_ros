@@ -88,34 +88,22 @@ class AntropArmsPythonInterface(object):
         # Initiate the PID() object to compute errors
         # Position x
         self.pid_controller_x = PID()
-        self.pid_controller_x.set_kp(0.1)
-        self.pid_controller_x.set_ki(0)
-        self.pid_controller_x.set_kd(0)
+        self.setPidValues(self.pid_controller_x, 0.1, 0, 0)
         # Position y
         self.pid_controller_y = PID()
-        self.pid_controller_y.set_kp(0.1)
-        self.pid_controller_y.set_ki(0)
-        self.pid_controller_y.set_kd(0)
+        self.setPidValues(self.pid_controller_y, 0.1, 0, 0)
         # Position z
         self.pid_controller_z = PID()
-        self.pid_controller_z.set_kp(0.1)
-        self.pid_controller_z.set_ki(0)
-        self.pid_controller_z.set_kd(0)
+        self.setPidValues(self.pid_controller_z, 0.1, 0, 0)
         # Orientation Roll
         self.pid_controller_roll = PID()
-        self.pid_controller_roll.set_kp(0.1)
-        self.pid_controller_roll.set_ki(0)
-        self.pid_controller_roll.set_kd(0)
+        self.setPidValues(self.pid_controller_roll, 0.1, 0, 0)
         # Orientation Pitch
         self.pid_controller_pitch = PID()
-        self.pid_controller_pitch.set_kp(0.1)
-        self.pid_controller_pitch.set_ki(0)
-        self.pid_controller_pitch.set_kd(0)
+        self.setPidValues(self.pid_controller_pitch, 0.1, 0, 0)
         # Orientation Yaw
         self.pid_controller_yaw = PID()
-        self.pid_controller_yaw.set_kp(0.1)
-        self.pid_controller_yaw.set_ki(0)
-        self.pid_controller_yaw.set_kd(0)
+        self.setPidValues(self.pid_controller_yaw, 0.1, 0, 0)
         # Init servers
         self._init_servers()
         # Active controller:
@@ -203,11 +191,33 @@ class AntropArmsPythonInterface(object):
             rospy.loginfo("All subscribers initiated correctly!")
 
     def _init_servers(self):
-        self.cfg_server = Server(DynamicReconfigurePidConfig, self.cfg_callback)
+
+        try:
+            self.cfg_server = Server(DynamicReconfigurePidConfig, self.cfg_callback)
+
+        except Exception as e:
+            rospy.logerr("Server initialization failed: {}".format(e))
+
+        finally:
+            rospy.loginfo("All servers initiated correctly!")
+
+    def setPidValues(self, pid, initP, initI, initD):
+        """
+        :param pid:
+        :param initP:
+        :param initI:
+        :param initD:
+        """
+        pid.set_kp(initP)
+        pid.set_ki(initI)
+        pid.set_kd(initD)
+
 
     def cfg_callback(self, config, level):
         """
-
+        :param config:
+        :param level:
+        :return:
         """
         if not self.config_start:
             # Position x
@@ -239,29 +249,20 @@ class AntropArmsPythonInterface(object):
         # New parameter values
         else:
             # Position x
-            self.pid_controller_x.set_kp(config.position_x_p)
-            self.pid_controller_x.set_ki(config.position_x_i)
-            self.pid_controller_x.set_kd(config.position_x_d)
+            self.setPidValues(self.pid_controller_x, config.position_x_p, config.position_x_i, config.position_x_d)
             # Position y
-            self.pid_controller_y.set_kp(config.position_y_p)
-            self.pid_controller_y.set_ki(config.position_y_i)
-            self.pid_controller_y.set_kd(config.position_y_d)
+            self.setPidValues(self.pid_controller_y, config.position_y_p, config.position_y_i, config.position_y_d)
             # Position z
-            self.pid_controller_z.set_kp(config.position_z_p)
-            self.pid_controller_z.set_ki(config.position_z_i)
-            self.pid_controller_z.set_kd(config.position_z_d)
+            self.setPidValues(self.pid_controller_z, config.position_z_p, config.position_z_i, config.position_z_d)
             # Orientation - Roll
-            self.pid_controller_roll.set_kp(config.orientation_roll_p)
-            self.pid_controller_roll.set_ki(config.orientation_roll_i)
-            self.pid_controller_roll.set_kd(config.orientation_roll_d)
+            self.setPidValues(self.pid_controller_roll, config.orientation_roll_p, config.orientation_roll_i,
+                              config.orientation_roll_d)
             # Orientation - Pitch
-            self.pid_controller_pitch.set_kp(config.orientation_pitch_p)
-            self.pid_controller_pitch.set_ki(config.orientation_pitch_i)
-            self.pid_controller_pitch.set_kd(config.orientation_pitch_d)
+            self.setPidValues(self.pid_controller_pitch, config.orientation_pitch_p, config.orientation_pitch_i,
+                              config.orientation_pitch_d)
             # Orientation - Yaw
-            self.pid_controller_yaw.set_kp(config.orientation_yaw_p)
-            self.pid_controller_yaw.set_ki(config.orientation_yaw_i)
-            self.pid_controller_yaw.set_kd(config.orientation_yaw_d)
+            self.setPidValues(self.pid_controller_yaw, config.orientation_yaw_p, config.orientation_yaw_i,
+                              config.orientation_yaw_d)
 
         return config
 
@@ -280,6 +281,9 @@ class AntropArmsPythonInterface(object):
         return switchControllerRequest
 
     def switchControllerCallback(self, selected_controller):
+        """
+        :param selected_controller:
+        """
         if selected_controller.data == "servo":
             rospy.loginfo("Selected the servo controller, attempting to activate!")
             switchToServoRequest = self.createSwitchControllerRequest(self.joint_position_controllers,
@@ -498,6 +502,9 @@ class AntropArmsPythonInterface(object):
         return jacobianMatrix
 
     def servoCtl(self, currentRobotPose):
+        """
+        :param currentRobotPose:
+        """
         # Necessary overhead since it has to be calculated for each iteration?
         currentJointState = self.getCurrentJointStates()
         inverseJacobian = np.linalg.pinv(self.getJacobianMatrix(currentJointState))
@@ -571,6 +578,7 @@ class AntropArmsPythonInterface(object):
 
                 elif self.robot_state == "trajectory":
                     rospy.loginfo("Currently trajectory is not handled! Switch to servo.")
+                    rospy.loginfo("Current PID value: {}".format(self.pid_controller_x.get_kp()))
                     pass
 
                 else:

@@ -49,6 +49,8 @@ class AntropArmsPythonInterface(object):
         self.formatted_group_name = None
         if self.group_name == "left_arm":
             self.formatted_group_name = "leftArm"
+        else:
+            self.formatted_group_name = "rightArm"
 
         group = moveit_commander.MoveGroupCommander(self.group_name)
 
@@ -504,49 +506,34 @@ class AntropArmsPythonInterface(object):
         rospy.loginfo("Computed Jacobian matrix for the given joint state: {}".format(jacobianMatrix))
         return jacobianMatrix
 
-    def servoCtl(self, currentRobotPose):
+    def servoCtl(self):
         """
         :param currentRobotPose:
         """
+        currentPose = self.getCurrentPose()
+        self.current_pose_publisher.publish(currentPose)
         # Necessary overhead since it has to be calculated for each iteration?
         currentJointState = self.getCurrentJointStates()
         inverseJacobian = np.linalg.pinv(self.getJacobianMatrix(currentJointState))
         # Fetch the current end effector RPY orientation; type: List (3x1)
         currentEeOrientationRPY = self.group.get_current_rpy()
         rospy.loginfo("Current RPY of the EE is: {}".format(currentEeOrientationRPY))
-        #
-        formattedCurrentPose = np.array(
-            [currentRobotPose.position.x, currentRobotPose.position.y, currentRobotPose.position.z,
-             currentRobotPose.orientation.x, currentRobotPose.orientation.y,
-             currentRobotPose.orientation.z, currentRobotPose.orientation.w])
-        rospy.loginfo("Current pose: {}".format(currentRobotPose))
+        # Logging
+        rospy.loginfo("Reference pose: {}".format(self.reference_pose))
+        rospy.loginfo("Current pose: {}".format(currentPose))
         # Fetching the reference pose and passing it to the PID controller
         if not self.reference_pose == None:
-            formattedReferecePose = np.array(
-                [self.reference_pose.position.x, self.reference_pose.position.y,
-                 self.reference_pose.position.z,
-                 self.reference_pose.orientation.x, self.reference_pose.orientation.y,
-                 self.reference_pose.orientation.z, self.reference_pose.orientation.w])
             # Calculate positional errors
-            eePositionX = self.pid_controller_x.compute(formattedReferecePose[0],
-                                                        formattedCurrentPose[0])
-            eePositionY = self.pid_controller_y.compute(formattedReferecePose[1],
-                                                        formattedCurrentPose[1])
-            eePositionZ = self.pid_controller_z.compute(formattedReferecePose[2],
-                                                        formattedCurrentPose[2])
-            # Calculate orientation errors
-            # TODO: Replace placeholder with real reference RPY
-            #placeholderEeOrientation = [0.12993158567374422, -0.505918787742537, -0.037960830632892635]
-            #eeRollOrientation = self.pid_controller_roll.compute(currentEeOrientationRPY[0], placeholderEeOrientation[0])
-            #eePitchOrientation = self.pid_controller_pitch.compute(currentEeOrientationRPY[1], placeholderEeOrientation[1])
-            #eeYawOrientation = self.pid_controller_yaw.compute(currentEeOrientationRPY[2], placeholderEeOrientation[2])
+            eePositionX = self.pid_controller_x.compute(self.reference_pose.position.x,
+                                                        currentPose.position.x)
+            eePositionY = self.pid_controller_y.compute(self.reference_pose.position.y,
+                                                        currentPose.position.y)
+            eePositionZ = self.pid_controller_z.compute(self.reference_pose.position.z,
+                                                        currentPose.position.z)
             # Logging
             rospy.loginfo("This is what the normal subtraction shows:{}".format(
-                formattedReferecePose - formattedCurrentPose))
+                self.reference_pose.position.x - currentPose.position.x))
             rospy.loginfo("EE Position error x: {}".format(eePositionX))
-            rospy.loginfo("EE Position error y: {}".format(eePositionY))
-            rospy.loginfo("EE Position error z: {}".format(eePositionZ))
-            # TODO: Remove the hard coded orientation down the line
             eeVelocityVector = np.array(
                 [eePositionX, eePositionY, eePositionZ, 0, 0, 0])
             rospy.loginfo("EE velocity vector: {}".format(eeVelocityVector))
@@ -573,11 +560,9 @@ class AntropArmsPythonInterface(object):
 
             while not rospy.is_shutdown():
                 # Publish current pose irregardless of the currently active robot state!
-                currentPose = self.getCurrentPose()
-                self.current_pose_publisher.publish(currentPose)
                 # Enter corresponding operation mode depending on robot state!
                 if self.robot_state == "servo":
-                    self.servoCtl(currentPose)
+                    self.servoCtl()
 
                 elif self.robot_state == "trajectory":
                     rospy.loginfo("Currently trajectory is not handled! Switch to servo.")

@@ -543,8 +543,8 @@ class AntropArmsPythonInterface(object):
             newJointState = jointVelocity# np.dot(jointVelocity, self.delta_T)
             # Publish the calculated deltaJointStates + currentJointState in order to move to target ee position
             rospy.loginfo("Publishing to joints!")
-            self.left_arm_shoulder.publish(currentJointState[0] + newJointState[0])
-            self.left_arm_shoulder_pitch.publish(currentJointState[1] + newJointState[1])
+            self.left_arm_shoulder_pitch.publish(currentJointState[0] + newJointState[0])
+            self.left_arm_shoulder.publish(currentJointState[1] + newJointState[1])
             self.left_arm_shoulder_elbow.publish(currentJointState[2] + newJointState[2])
             self.left_arm_elbow_forearm.publish(currentJointState[3] + newJointState[3])
 
@@ -566,7 +566,10 @@ class AntropArmsPythonInterface(object):
 
                 elif self.robot_state == "trajectory":
                     rospy.loginfo("Currently trajectory is not handled! Switch to servo.")
+                    rospy.loginfo("Joints are ordered like this: {}".format(self.group.get_joints()))
                     rospy.loginfo("Current PID value: {}".format(self.pid_controller_x.get_kp()))
+                    rospy.loginfo(self.incorrect_joint_list)
+                    rospy.loginfo(self.joint_list)
                     pass
 
                 else:

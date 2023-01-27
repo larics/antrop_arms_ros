@@ -5,7 +5,7 @@ import moveit_msgs.msg
 import copy
 from geometry_msgs.msg import Pose, PoseStamped
 from math import pi
-from std_msgs.msg import String, Header, Float64
+from std_msgs.msg import String, Header, Float64, Float32MultiArray
 from moveit_commander.conversions import pose_to_list
 import numpy as np
 import time
@@ -85,6 +85,8 @@ class AntropArmsPythonInterface(object):
         self.available_groups = available_groups
         # Reference pose
         self.reference_pose = None
+        # Reference velocity
+        self.reference_velocity = None
         # Initiate services
         self._init_services()
         # Initiate publishers/subscribers
@@ -187,6 +189,9 @@ class AntropArmsPythonInterface(object):
         try:
             self.group_pose_command = rospy.Subscriber("/{}/pose/command".format(self.formatted_group_name), Pose,
                                                        self.poolReferencePose, queue_size=1)
+            self.group_pose_command = rospy.Subscriber("/{}/velocity/command".format(self.formatted_group_name),
+                                                       Float32MultiArray,
+                                                       self.poolReferenceVelocity, queue_size=1)
             self.controller_manager = rospy.Subscriber("/controller/manager".format(self.formatted_group_name), String,
                                                        self.switchControllerCallback, queue_size=1)
         except Exception as e:
@@ -289,13 +294,13 @@ class AntropArmsPythonInterface(object):
         """
         :param selected_controller:
         """
-        if selected_controller.data == "servo":
-            rospy.loginfo("Selected the servo controller, attempting to activate!")
+        if selected_controller.data == "servoPosition":
+            rospy.loginfo("Selected the servoPosition controller, attempting to activate!")
             switchToServoRequest = self.createSwitchControllerRequest(self.joint_position_controllers,
                                                                       self.follow_trajectory_controllers)
-            responseServo = self.switchControllerService(switchToServoRequest)
-            rospy.loginfo("The response for calling the servoRequest: {}".format(responseServo))
-            self.robot_state = "servo"
+            responseServoPosition = self.switchControllerService(switchToServoRequest)
+            rospy.loginfo("The response for calling the servoRequest: {}".format(responseServoPosition))
+            self.robot_state = "servo_position"
             rospy.loginfo("Started controllers for: {}".format(self.robot_state))
 
         elif selected_controller.data == "trajectory":
@@ -303,15 +308,27 @@ class AntropArmsPythonInterface(object):
             switchToTrajectoryRequest = self.createSwitchControllerRequest(self.follow_trajectory_controllers,
                                                                            self.joint_position_controllers)
             responseTrajectory = self.switchControllerService(switchToTrajectoryRequest)
-            rospy.loginfo("The response for calling the servoRequest: {}".format(responseTrajectory))
+            rospy.loginfo("The response for calling the trajectoryRequest: {}".format(responseTrajectory))
             self.robot_state = "trajectory"
+            rospy.loginfo("Started controllers for: {}".format(self.robot_state))
+
+        elif selected_controller.data == "servoVelocity":
+            rospy.loginfo("Selected the servoVelocity controller, attempting to activate!")
+            switchToServoRequest = self.createSwitchControllerRequest(self.joint_position_controllers,
+                                                                      self.follow_trajectory_controllers)
+            responseServoVelocity = self.switchControllerService(switchToServoRequest)
+            rospy.loginfo("The response for calling the servoRequest: {}".format(responseServoVelocity))
+            self.robot_state = "servo_velocity"
             rospy.loginfo("Started controllers for: {}".format(self.robot_state))
 
         else:
             rospy.logerr("Incorrect controller selected! Received: {}".format(selected_controller))
 
-    def poolReferencePose(self, reference):
-        self.reference_pose = reference
+    def poolReferencePose(self, reference_pose):
+        self.reference_pose = reference_pose
+
+    def poolReferenceVelocity(self, reference_velocity):
+        self.reference_velocity = reference_velocity
 
     def getCurrentJointStates(self):
         return self.group.get_current_joint_values()
@@ -459,6 +476,7 @@ class AntropArmsPythonInterface(object):
         self.group.go(wait=True)
         self.group.stop()
 
+
     def getIK(self, target_pose, current_joint_state):
         """
         :param target_pose: -> xyz position of the robot ee and xyzw quaternion orientation, a 7x1 array.
@@ -522,7 +540,7 @@ class AntropArmsPythonInterface(object):
         rospy.loginfo("Reference pose: {}".format(self.reference_pose))
         rospy.loginfo("Current pose: {}".format(currentPose))
         # Fetching the reference pose and passing it to the PID controller
-        if not self.reference_pose == None:
+        if not self.reference_pose == None and self.robot_state == "servo_position":
             # Calculate positional errors
             eePositionX = self.pid_controller_x.compute(self.reference_pose.position.x,
                                                         currentPose.position.x)
@@ -530,23 +548,40 @@ class AntropArmsPythonInterface(object):
                                                         currentPose.position.y)
             eePositionZ = self.pid_controller_z.compute(self.reference_pose.position.z,
                                                         currentPose.position.z)
+
+            referenceEeOrientationRPY = [1.2073214672240564, -0.22176909762495434, -1.207390444292618]
+            # Calculate orientation errors
+            eeRollOrientation = self.pid_controller_roll.compute(referenceEeOrientationRPY[0], currentEeOrientationRPY[0])
+            eePitchOrientation = self.pid_controller_pitch.compute(referenceEeOrientationRPY[1], currentEeOrientationRPY[1])
+            eeYawOrientation = self.pid_controller_yaw.compute(referenceEeOrientationRPY[2], currentEeOrientationRPY[2])
             # Logging
             rospy.loginfo("This is what the normal subtraction shows:{}".format(
                 self.reference_pose.position.x - currentPose.position.x))
             rospy.loginfo("EE Position error x: {}".format(eePositionX))
             eeVelocityVector = np.array(
-                [eePositionX, eePositionY, eePositionZ, 0, 0, 0])
+               [eePositionX, eePositionY, eePositionZ, eeRollOrientation, eePitchOrientation, eeYawOrientation])
+            # eeVelocityVector = np.array(
+            #     [eePositionX, eePositionY, eePositionZ, 0, 0, 0])
             rospy.loginfo("EE velocity vector: {}".format(eeVelocityVector))
             jointVelocity = np.dot(inverseJacobian, eeVelocityVector)
             rospy.loginfo("Joint velocity vector: {}".format(jointVelocity))
             # Calculate the delta joint state
-            newJointState = jointVelocity# np.dot(jointVelocity, self.delta_T)
+            newJointState = np.dot(jointVelocity, self.delta_T)
             # Publish the calculated deltaJointStates + currentJointState in order to move to target ee position
             rospy.loginfo("Publishing to joints!")
             self.left_arm_shoulder_pitch.publish(currentJointState[0] + newJointState[0])
             self.left_arm_shoulder.publish(currentJointState[1] + newJointState[1])
             self.left_arm_shoulder_elbow.publish(currentJointState[2] + newJointState[2])
             self.left_arm_elbow_forearm.publish(currentJointState[3] + newJointState[3])
+
+        elif not self.reference_velocity == None and self.robot_state == "servo_velocity":
+            jointVelocityRV = np.dot(inverseJacobian, self.reference_velocity)
+            newJointStateRV = np.dot(jointVelocityRV, self.delta_T)
+            rospy.loginfo("Publishing to joints!")
+            self.left_arm_shoulder_pitch.publish(newJointStateRV[0])
+            self.left_arm_shoulder.publish(newJointStateRV[1])
+            self.left_arm_shoulder_elbow.publish(newJointStateRV[2])
+            self.left_arm_elbow_forearm.publish(newJointStateRV[3])
 
         else:
             rospy.logwarn("No reference given!")
@@ -561,15 +596,18 @@ class AntropArmsPythonInterface(object):
             while not rospy.is_shutdown():
                 # Publish current pose irregardless of the currently active robot state!
                 # Enter corresponding operation mode depending on robot state!
-                if self.robot_state == "servo":
+                if self.robot_state == "servo_position" or self.robot_state == "servo_velocity":
                     self.servoCtl()
 
                 elif self.robot_state == "trajectory":
                     rospy.loginfo("Currently trajectory is not handled! Switch to servo.")
-                    rospy.loginfo("Joints are ordered like this: {}".format(self.group.get_joints()))
+                    currentPose = self.getCurrentPose()
+                    self.current_pose_publisher.publish(currentPose)
+                    currentEeOrientationRPY = self.group.get_current_rpy()
                     rospy.loginfo("Current PID value: {}".format(self.pid_controller_x.get_kp()))
-                    rospy.loginfo(self.incorrect_joint_list)
-                    rospy.loginfo(self.joint_list)
+                    rospy.loginfo("Current EE pose: {}".format(currentPose))
+                    rospy.loginfo("Current RPY of the EE is: {}".format(currentEeOrientationRPY))
+                    rospy.loginfo("Joint list for selected move group: {}".format(self.joint_list))
                     pass
 
                 else:

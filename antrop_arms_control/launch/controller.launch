@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <launch>
 
-    <arg name="pid" value="false"/>
+    <arg name="pid" value="true"/>
 
     <rosparam file="$(find antrop_arms_control)/config/controller.yaml" command="load"/>
 
-    <!--group if="$(arg pid)">
+    <group if="$(arg pid)">
         <rosparam file="$(find antrop_arms_control)/config/pid_gains.yaml" command="load"/>
-    </group-->
+    </group>
 
     <!-- Initialize stopped individual joint controllers -->
     <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"

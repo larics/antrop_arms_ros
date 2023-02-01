@@ -1,36 +1,36 @@
-#antrop_arms:
-#  gazebo_ros_control:
-#    pid_gains:
-#      base_shoulder_right_pitch_joint:
-#        p: 5.0
-#        i: 0.0
-#        d: 0.0
-#      base_shoulder_right_joint:
-#        p: 2.0
-#        i: 0.0
-#        d: 0.0
-#      shoulder_elbow_right_joint:
-#        p: 2.0
-#        i: 0.0
-#        d: 0.0
-#      elbow_forearm_right_joint:
-#        p: 2.0
-#        i: 0.0
-#        d: 0.0
-#      base_shoulder_left_pitch_joint:
-#        p: 5.0
-#        i: 0.0
-#        d: 0.0
-#      base_shoulder_left_joint:
-#        p: 2.0
-#        i: 0.0
-#        d: 0.0
-#      shoulder_elbow_left_joint:
-#        p: 2.0
-#        i: 0.0
-#        d: 0.0
-#      elbow_forearm_left_joint:
-#        p: 2.0
-#        i: 0.0
-#        d: 0.0
+antrop_arms:
+  gazebo_ros_control:
+    pid_gains:
+      base_shoulder_right_pitch_joint:
+        p: 500.0
+        i: 0.0
+        d: 110.0
+      base_shoulder_right_joint:
+        p: 225.0
+        i: 0.0
+        d: 60.0
+      shoulder_elbow_right_joint:
+        p: 8.0
+        i: 0.0
+        d: 0.285
+      elbow_forearm_right_joint:
+        p: 40.0
+        i: 0.0
+        d: 3.5
+      base_shoulder_left_pitch_joint:
+        p: 500.0
+        i: 0.0
+        d: 110.0
+      base_shoulder_left_joint:
+        p: 225.0
+        i: 0.0
+        d: 60.0
+      shoulder_elbow_left_joint:
+        p: 8.0
+        i: 0.0
+        d: 0.285
+      elbow_forearm_left_joint:
+        p: 40.0
+        i: 0.0
+        d: 3.5
 

@@ -15,5 +15,7 @@
     <depend>dynamic_reconfigure</depend>
     <depend>std_msgs</depend>
     <depend>rospy</depend>
+    <depend>roscpp</depend>
+    <depend>sensor_msgs</depend>
 
 </package>

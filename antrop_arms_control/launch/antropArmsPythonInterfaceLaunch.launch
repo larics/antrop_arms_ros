@@ -1,0 +1,10 @@
+<launch>
+
+<arg name="left_arm" value="left_arm"/>
+<arg name="right_arm" value="right_arm"/>
+<!--Left arm node -->
+<node name="left_arm_node" pkg="antrop_arms_control" type="antropArmsPythonInterface.py" args="$(arg left_arm)" output="screen" />
+<!--Right arm node -->
+<node name="right_arm_node" pkg="antrop_arms_control" type="antropArmsPythonInterface.py" args="$(arg right_arm)" output="screen" />
+
+</launch>

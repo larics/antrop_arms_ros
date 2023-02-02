@@ -10,7 +10,7 @@ add_message_files(
         FILES
         PIDController.msg
         TorsoJointPositions.msg
-        ArmCmd.msg
+        JointArmCmd.msg
         CartesianArmCmd.msg
 )
 

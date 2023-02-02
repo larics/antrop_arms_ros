@@ -11,6 +11,7 @@ add_message_files(
         PIDController.msg
         TorsoJointPositions.msg
         ArmCmd.msg
+        CartesianArmCmd.msg
 )
 
 generate_messages(
@@ -24,7 +25,7 @@ generate_dynamic_reconfigure_options(
 )
 
 catkin_package(
-        CATKIN_DEPENDS message_runtime roscpp rospy std_msgs
+        CATKIN_DEPENDS message_runtime roscpp rospy std_msgs hpe_ros_msgs
 )
 
 include_directories(

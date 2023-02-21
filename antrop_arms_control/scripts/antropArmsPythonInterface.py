@@ -99,13 +99,13 @@ class AntropArmsPythonInterface(object):
         # Initiate the PID() object to compute errors
         # Position x
         self.pid_controller_x = PID()
-        self.setPidValues(self.pid_controller_x, 0.1, 0, 0)
+        self.setPidValues(self.pid_controller_x, 1, 0, 0)
         # Position y
         self.pid_controller_y = PID()
-        self.setPidValues(self.pid_controller_y, 0.1, 0, 0)
+        self.setPidValues(self.pid_controller_y, 1, 0, 0)
         # Position z
         self.pid_controller_z = PID()
-        self.setPidValues(self.pid_controller_z, 0.1, 0, 0)
+        self.setPidValues(self.pid_controller_z, 1, 0, 0)
         # Orientation Roll
         self.pid_controller_roll = PID()
         self.setPidValues(self.pid_controller_roll, 0.1, 0, 0)
@@ -202,11 +202,19 @@ class AntropArmsPythonInterface(object):
             self.controller_manager = rospy.Subscriber("/controller/manager", String,
                                                        self.switchControllerCallback, queue_size=1)
             if self.group_name == "left_arm":
+
                 self.joints_command = rospy.Subscriber("/left_arm".format(self.formatted_group_name), JointArmCmd,
                                                        self.poolReferenceJoints, queue_size=1)
+                self.group_pose_command = rospy.Subscriber("/cart_left_arm".format(self.formatted_group_name),
+                                                           CartesianArmCmd,
+                                                           self.poolReferencePose, queue_size=1)
+
             else:
                 self.joints_command = rospy.Subscriber("/right_arm".format(self.formatted_group_name), JointArmCmd,
                                                        self.poolReferenceJoints, queue_size=1)
+                self.group_pose_command = rospy.Subscriber("/kalman_cart_right_arm".format(self.formatted_group_name),
+                                                           CartesianArmCmd,
+                                                           self.poolReferencePose, queue_size=1)
 
         except Exception as e:
             rospy.logerr("Subscriber initialization failed: {}".format(e))
@@ -553,31 +561,30 @@ class AntropArmsPythonInterface(object):
         # Fetching the reference pose and passing it to the PID controller
         if not self.reference_pose == None and self.robot_state == "servoPosition":
             # Calculate positional errors
-            eePositionX = self.pid_controller_x.compute(self.reference_pose.position.x,
-                                                        currentPose.position.x)
-            eePositionY = self.pid_controller_y.compute(self.reference_pose.position.y,
-                                                        currentPose.position.y)
-            eePositionZ = self.pid_controller_z.compute(self.reference_pose.position.z,
-                                                        currentPose.position.z)
+            # eePositionX = self.pid_controller_x.compute(self.reference_pose.positionEE.x, currentPose.position.x)
+            # eePositionY = self.pid_controller_y.compute(self.reference_pose.positionEE.y, currentPose.position.y)
+            # eePositionZ = self.pid_controller_z.compute(self.reference_pose.positionEE.z, currentPose.position.z)
+            eePositionX = self.pid_controller_x.compute(self.reference_pose.positionEE.x -0.275, currentPose.position.x)# -0.3, currentPose.position.x)
+            eePositionY = self.pid_controller_y.compute(self.reference_pose.positionEE.y -0.175, currentPose.position.y) #+0.175, currentPose.position.y)
+            eePositionZ = self.pid_controller_z.compute(self.reference_pose.positionEE.z +1.225, currentPose.position.z) #+1.375, currentPose.position.z)
 
-            referenceEeOrientationRPY = [1.2073214672240564, -0.22176909762495434, -1.207390444292618]
+            # referenceEeOrientationRPY = [1.2073214672240564, -0.22176909762495434, -1.207390444292618]
             # Calculate orientation errors
-            eeRollOrientation = self.pid_controller_roll.compute(referenceEeOrientationRPY[0], currentEeOrientationRPY[0])
-            eePitchOrientation = self.pid_controller_pitch.compute(referenceEeOrientationRPY[1], currentEeOrientationRPY[1])
-            eeYawOrientation = self.pid_controller_yaw.compute(referenceEeOrientationRPY[2], currentEeOrientationRPY[2])
+            # eeRollOrientation = self.pid_controller_roll.compute(referenceEeOrientationRPY[0], currentEeOrientationRPY[0])
+            # eePitchOrientation = self.pid_controller_pitch.compute(referenceEeOrientationRPY[1], currentEeOrientationRPY[1])
+            # eeYawOrientation = self.pid_controller_yaw.compute(referenceEeOrientationRPY[2], currentEeOrientationRPY[2])
             # Logging
             rospy.loginfo("This is what the normal subtraction shows:{}".format(
-                self.reference_pose.position.x - currentPose.position.x))
+                self.reference_pose.positionEE.x - currentPose.position.x))
             rospy.loginfo("EE Position error x: {}".format(eePositionX))
             eeVelocityVector = np.array(
-               [eePositionX, eePositionY, eePositionZ, eeRollOrientation, eePitchOrientation, eeYawOrientation])
-            # eeVelocityVector = np.array(
-            #     [eePositionX, eePositionY, eePositionZ, 0, 0, 0])
+                [eePositionX, eePositionY, eePositionZ, 0, 0, 0])
             rospy.loginfo("EE velocity vector: {}".format(eeVelocityVector))
             jointVelocity = np.dot(inverseJacobian, eeVelocityVector)
             rospy.loginfo("Joint velocity vector: {}".format(jointVelocity))
             # Calculate the delta joint state
-            newJointState = np.dot(jointVelocity, self.delta_T)
+            newJointState = jointVelocity #np.dot(jointVelocity, self.delta_T)
+            # newJointState = jointVelocity
             # Publish the calculated deltaJointStates + currentJointState in order to move to target ee position
             rospy.loginfo("Publishing to joints!")
             if self.group_name == "left_arm":
@@ -592,8 +599,9 @@ class AntropArmsPythonInterface(object):
                 self.right_arm_elbow_forearm.publish(currentJointState[3] + newJointState[3])
 
 
-        elif not self.reference_velocity == None and self.robot_state == "servoVelocity":
-            jointVelocityRV = np.dot(inverseJacobian, self.reference_velocity)
+        elif not self.reference_pose == None and self.robot_state == "servoVelocity":
+            formattedVelocityVector = [self.reference_pose.velocityEE.x, self.reference_pose.velocityEE.y, self.reference_pose.velocityEE.z, 0, 0, 0]
+            jointVelocityRV = np.dot(inverseJacobian, formattedVelocityVector)
             newJointStateRV = np.dot(jointVelocityRV, self.delta_T)
             rospy.loginfo("Publishing to joints!")
             if self.group_name == "left_arm":
@@ -613,15 +621,15 @@ class AntropArmsPythonInterface(object):
     def jointCtl(self):
         rospy.loginfo("Attempting to publish the reference joints!")
         if self.group_name == "left_arm":
-            self.left_arm_shoulder_pitch.publish(self.degreeToRadian(self.reference_joints.shoulder_pitch))
-            self.left_arm_shoulder.publish(self.degreeToRadian(self.reference_joints.shoulder_roll))
-            self.left_arm_shoulder_elbow.publish(self.degreeToRadian(self.reference_joints.shoulder_yaw))
-            self.left_arm_elbow_forearm.publish(self.degreeToRadian(self.reference_joints.elbow))
+            self.left_arm_shoulder_pitch.publish(self.degreeToRadian(self.reference_joints.shoulder_pitch)*(-1.0))
+            self.left_arm_shoulder.publish(self.degreeToRadian(self.reference_joints.shoulder_roll)*(-1.0))
+            self.left_arm_shoulder_elbow.publish((self.degreeToRadian(self.reference_joints.shoulder_yaw))*(1.0))
+            self.left_arm_elbow_forearm.publish(self.degreeToRadian(self.reference_joints.elbow)*(1.0))
         else:
-            self.right_arm_shoulder_pitch.publish(self.degreeToRadian(self.reference_joints.shoulder_pitch))
-            self.right_arm_shoulder.publish(self.degreeToRadian(self.reference_joints.shoulder_roll))
-            self.right_arm_shoulder_elbow.publish(self.degreeToRadian(self.reference_joints.shoulder_yaw))
-            self.right_arm_elbow_forearm.publish(self.degreeToRadian(self.reference_joints.elbow))
+            self.right_arm_shoulder_pitch.publish(self.degreeToRadian(self.reference_joints.shoulder_pitch)*(1.0))
+            self.right_arm_shoulder.publish(self.degreeToRadian(self.reference_joints.shoulder_roll)*(1.0))
+            self.right_arm_shoulder_elbow.publish(self.degreeToRadian(self.reference_joints.shoulder_yaw)*(1.0))
+            self.right_arm_elbow_forearm.publish(self.degreeToRadian(self.reference_joints.elbow)*(1.0))
 
 
     def run(self):
@@ -646,6 +654,9 @@ class AntropArmsPythonInterface(object):
                     rospy.loginfo("Current EE pose: {}".format(currentPose))
                     rospy.loginfo("Current RPY of the EE is: {}".format(currentEeOrientationRPY))
                     rospy.loginfo("Joint list for selected move group: {}".format(self.joint_list))
+                    if self.reference_pose != None:
+                        rospy.logwarn("The position x value: {}".format(self.reference_pose.position.x))
+                        rospy.logwarn(self.reference_pose)
                     pass
 
                 elif not self.reference_joints == None and self.robot_state == "publishJoints":
@@ -665,5 +676,6 @@ class AntropArmsPythonInterface(object):
 
 
 if __name__ == '__main__':
-    testing = AntropArmsPythonInterface(sys.argv[1])
+    # testing = AntropArmsPythonInterface(sys.argv[1])
+    testing = AntropArmsPythonInterface("right_arm")
     testing.run()

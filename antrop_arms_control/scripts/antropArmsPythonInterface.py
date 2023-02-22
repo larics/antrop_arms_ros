@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import sys
 import rospy
 import moveit_commander
@@ -5,7 +6,7 @@ import moveit_msgs.msg
 import copy
 from geometry_msgs.msg import Pose, PoseStamped
 from math import pi
-from std_msgs.msg import String, Header, Float64
+from std_msgs.msg import String, Header, Float64, Float32MultiArray, Float32
 from moveit_commander.conversions import pose_to_list
 import numpy as np
 import time
@@ -15,7 +16,10 @@ from moveit_msgs.srv import GetPositionFK, GetPositionFKRequest, GetPositionIK, 
 from tf import TransformListener
 from pid import PID
 from controller_manager_msgs.srv import SwitchController, SwitchControllerRequest
-
+# Dynamic reconfigure imports
+from antrop_arms_control.cfg import DynamicReconfigurePidConfig
+from dynamic_reconfigure.server import Server
+from antrop_arms_control.msg import JointArmCmd, CartesianArmCmd
 """
 RELEVANT SOURCES:
 https://github.com/ros-planning/moveit_commander/blob/indigo-devel/src/moveit_commander/move_group.py
@@ -31,7 +35,7 @@ class AntropArmsPythonInterface(object):
     for a more intelligent comprehension regarding their relative positions (avoiding collision)
     """
 
-    def __init__(self):
+    def __init__(self, selected_arm):
         super(AntropArmsPythonInterface, self).__init__()
 
         # Additional joint_state remapping, seemingly doesn't work when done from .gazebo and .urdf configurations!
@@ -43,26 +47,32 @@ class AntropArmsPythonInterface(object):
         robot = moveit_commander.RobotCommander()
         scene = moveit_commander.PlanningSceneInterface()
         # Define which group to use, available groups: "left_arm", "right_arm"
-        self.group_name = "left_arm"
+        self.group_name = selected_arm
         self.formatted_group_name = None
         if self.group_name == "left_arm":
             self.formatted_group_name = "leftArm"
+        else:
+            self.formatted_group_name = "rightArm"
 
         group = moveit_commander.MoveGroupCommander(self.group_name)
 
         display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
                                                        moveit_msgs.msg.DisplayTrajectory,
                                                        queue_size=20)
+
         planning_frame = group.get_planning_frame()
         rospy.loginfo("Reference frame is: {}".format(planning_frame))
+        # Checking which frames are available to be set for reference frames
+        rospy.loginfo("Available frames are: {}".format(robot.get_link_names()))
         ee_link = group.get_end_effector_link()
         rospy.loginfo("End effector is: {}".format(ee_link))
         available_groups = robot.get_group_names()
         rospy.loginfo("Available groups are: {}".format(available_groups))
-
+        # Dynamic reconfigure flag
+        self.config_start = False
         # Variables for practical use later in the code!
         self.rate = rospy.Rate(20)
-        self.deltaT = (1 / 20)
+        self.delta_T = (1 / 20)
         self.robot = robot
         self.frame_id = "world"
         self.scene = scene
@@ -75,13 +85,12 @@ class AntropArmsPythonInterface(object):
         self.ee_link = []
         self.ee_link.append(ee_link)
         self.available_groups = available_groups
-        self.correction_matrix = np.matrix([[1, 0, 0, 0],
-                                            [0, 1, 0, 0],
-                                            [0, 0, 1, 1.5],
-                                            [0, 0, 0, 1]])
-        # self.DH_matrix = self.correction_matrix * np.matrix([[]])
         # Reference pose
         self.reference_pose = None
+        # Reference velocity
+        self.reference_velocity = None
+        # Reference joints
+        self.reference_joints = None
         # Initiate services
         self._init_services()
         # Initiate publishers/subscribers
@@ -90,21 +99,26 @@ class AntropArmsPythonInterface(object):
         # Initiate the PID() object to compute errors
         # Position x
         self.pid_controller_x = PID()
-        self.pid_controller_x.set_kp(0.1)
-        self.pid_controller_x.set_ki(0)
-        self.pid_controller_x.set_kd(0)
+        self.setPidValues(self.pid_controller_x, 1, 0, 0)
         # Position y
         self.pid_controller_y = PID()
-        self.pid_controller_y.set_kp(0.1)
-        self.pid_controller_y.set_ki(0)
-        self.pid_controller_y.set_kd(0)
+        self.setPidValues(self.pid_controller_y, 1, 0, 0)
         # Position z
         self.pid_controller_z = PID()
-        self.pid_controller_z.set_kp(0.1)
-        self.pid_controller_z.set_ki(0)
-        self.pid_controller_z.set_kd(0)
+        self.setPidValues(self.pid_controller_z, 1, 0, 0)
+        # Orientation Roll
+        self.pid_controller_roll = PID()
+        self.setPidValues(self.pid_controller_roll, 0.1, 0, 0)
+        # Orientation Pitch
+        self.pid_controller_pitch = PID()
+        self.setPidValues(self.pid_controller_pitch, 0.1, 0, 0)
+        # Orientation Yaw
+        self.pid_controller_yaw = PID()
+        self.setPidValues(self.pid_controller_yaw, 0.1, 0, 0)
+        # Init servers
+        self._init_servers()
         # Active controller:
-        self.active_controller = "trajectory"
+        self.robot_state = "trajectory"
         # Controllers:
         self.joint_position_controllers = [
             'base_shoulder_left_joint_position_controller',
@@ -145,28 +159,31 @@ class AntropArmsPythonInterface(object):
     def _init_publishers(self):
 
         try:
-            # Check for argument: latch=True
+            # TODO: Check for argument: latch=True
             # Current pose publisher
             self.current_pose_publisher = rospy.Publisher("/{}/pose/current".format(self.formatted_group_name), Pose,
                                                           queue_size=10)
             # Joint position publishers
-            self.left_arm_shoulder = rospy.Publisher(
-                "/antrop_arms/base_shoulder_left_joint_position_controller/command", Float64, queue_size=10)
-            self.left_arm_shoulder_pitch = rospy.Publisher(
-                "/antrop_arms/base_shoulder_left_pitch_joint_position_controller/command", Float64, queue_size=10)
-            self.left_arm_shoulder_elbow = rospy.Publisher(
-                "/antrop_arms/shoulder_elbow_left_joint_position_controller/command", Float64, queue_size=10)
-            self.left_arm_elbow_forearm = rospy.Publisher(
-                "/antrop_arms/elbow_forearm_left_joint_position_controller/command", Float64, queue_size=10)
+            # Left arm joints
+            if self.group_name == "left_arm":
+                self.left_arm_shoulder = rospy.Publisher(
+                    "/antrop_arms/base_shoulder_left_joint_position_controller/command", Float64, queue_size=10)
+                self.left_arm_shoulder_pitch = rospy.Publisher(
+                    "/antrop_arms/base_shoulder_left_pitch_joint_position_controller/command", Float64, queue_size=10)
+                self.left_arm_shoulder_elbow = rospy.Publisher(
+                    "/antrop_arms/shoulder_elbow_left_joint_position_controller/command", Float64, queue_size=10)
+                self.left_arm_elbow_forearm = rospy.Publisher(
+                    "/antrop_arms/elbow_forearm_left_joint_position_controller/command", Float64, queue_size=10)
             # Right arm joints
-            self.right_arm_shoulder = rospy.Publisher(
-                "/antrop_arms/base_shoulder_right_joint_position_controller/command", Float64, queue_size=10)
-            self.right_arm_shoulder_pitch = rospy.Publisher(
-                "/antrop_arms/base_shoulder_right_pitch_joint_position_controller/command", Float64, queue_size=10)
-            self.right_arm_shoulder_elbow = rospy.Publisher(
-                "/antrop_arms/shoulder_elbow_right_joint_position_controller/command", Float64, queue_size=10)
-            self.right_arm_elbow_forearm = rospy.Publisher(
-                "/antrop_arms/elbow_forearm_right_joint_position_controller/command", Float64, queue_size=10)
+            else:
+                self.right_arm_shoulder = rospy.Publisher(
+                    "/antrop_arms/base_shoulder_right_joint_position_controller/command", Float64, queue_size=10)
+                self.right_arm_shoulder_pitch = rospy.Publisher(
+                    "/antrop_arms/base_shoulder_right_pitch_joint_position_controller/command", Float64, queue_size=10)
+                self.right_arm_shoulder_elbow = rospy.Publisher(
+                    "/antrop_arms/shoulder_elbow_right_joint_position_controller/command", Float64, queue_size=10)
+                self.right_arm_elbow_forearm = rospy.Publisher(
+                    "/antrop_arms/elbow_forearm_right_joint_position_controller/command", Float64, queue_size=10)
 
         except Exception as e:
             rospy.logerr("Publisher initialization failed: {}".format(e))
@@ -179,13 +196,108 @@ class AntropArmsPythonInterface(object):
         try:
             self.group_pose_command = rospy.Subscriber("/{}/pose/command".format(self.formatted_group_name), Pose,
                                                        self.poolReferencePose, queue_size=1)
-            self.controller_manager = rospy.Subscriber("/controller/manager".format(self.formatted_group_name), String,
+            self.group_pose_command = rospy.Subscriber("/{}/velocity/command".format(self.formatted_group_name),
+                                                       Float32MultiArray,
+                                                       self.poolReferenceVelocity, queue_size=1)
+            self.controller_manager = rospy.Subscriber("/controller/manager", String,
                                                        self.switchControllerCallback, queue_size=1)
+            if self.group_name == "left_arm":
+
+                self.joints_command = rospy.Subscriber("/left_arm".format(self.formatted_group_name), JointArmCmd,
+                                                       self.poolReferenceJoints, queue_size=1)
+                self.group_pose_command = rospy.Subscriber("/cart_left_arm".format(self.formatted_group_name),
+                                                           CartesianArmCmd,
+                                                           self.poolReferencePose, queue_size=1)
+
+            else:
+                self.joints_command = rospy.Subscriber("/right_arm".format(self.formatted_group_name), JointArmCmd,
+                                                       self.poolReferenceJoints, queue_size=1)
+                self.group_pose_command = rospy.Subscriber("/kalman_cart_right_arm".format(self.formatted_group_name),
+                                                           CartesianArmCmd,
+                                                           self.poolReferencePose, queue_size=1)
+
         except Exception as e:
             rospy.logerr("Subscriber initialization failed: {}".format(e))
 
         finally:
             rospy.loginfo("All subscribers initiated correctly!")
+
+    def _init_servers(self):
+
+        try:
+            self.cfg_server = Server(DynamicReconfigurePidConfig, self.cfg_callback)
+
+        except Exception as e:
+            rospy.logerr("Server initialization failed: {}".format(e))
+
+        finally:
+            rospy.loginfo("All servers initiated correctly!")
+
+    def setPidValues(self, pid, initP, initI, initD):
+        """
+        :param pid:
+        :param initP:
+        :param initI:
+        :param initD:
+        """
+        pid.set_kp(initP)
+        pid.set_ki(initI)
+        pid.set_kd(initD)
+
+
+    def cfg_callback(self, config, level):
+        """
+        :param config:
+        :param level:
+        :return:
+        """
+        if not self.config_start:
+            # Position x
+            config.position_x_p = self.pid_controller_x.get_kp()
+            config.position_x_i = self.pid_controller_x.get_ki()
+            config.position_x_d = self.pid_controller_x.get_kd()
+            # Position y
+            config.position_y_p = self.pid_controller_y.get_kp()
+            config.position_y_i = self.pid_controller_y.get_ki()
+            config.position_y_d = self.pid_controller_y.get_kd()
+            # Position z
+            config.position_z_p = self.pid_controller_z.get_kp()
+            config.position_z_i = self.pid_controller_z.get_ki()
+            config.position_z_d = self.pid_controller_z.get_kd()
+            # Orientation - Roll
+            config.orientation_roll_p = self.pid_controller_roll.get_kp()
+            config.orientation_roll_i = self.pid_controller_roll.get_ki()
+            config.orientation_roll_d = self.pid_controller_roll.get_kd()
+            # Orientation - Pitch
+            config.orientation_pitch_p = self.pid_controller_pitch.get_kp()
+            config.orientation_pitch_i = self.pid_controller_pitch.get_ki()
+            config.orientation_pitch_d = self.pid_controller_pitch.get_kd()
+            # Orientation - Yaw
+            config.orientation_yaw_p = self.pid_controller_yaw.get_kp()
+            config.orientation_yaw_i = self.pid_controller_yaw.get_ki()
+            config.orientation_yaw_d = self.pid_controller_yaw.get_kd()
+            # Config filled with initial values
+            self.config_start = True
+        # New parameter values
+        else:
+            # Position x
+            self.setPidValues(self.pid_controller_x, config.position_x_p, config.position_x_i, config.position_x_d)
+            # Position y
+            self.setPidValues(self.pid_controller_y, config.position_y_p, config.position_y_i, config.position_y_d)
+            # Position z
+            self.setPidValues(self.pid_controller_z, config.position_z_p, config.position_z_i, config.position_z_d)
+            # Orientation - Roll
+            self.setPidValues(self.pid_controller_roll, config.orientation_roll_p, config.orientation_roll_i,
+                              config.orientation_roll_d)
+            # Orientation - Pitch
+            self.setPidValues(self.pid_controller_pitch, config.orientation_pitch_p, config.orientation_pitch_i,
+                              config.orientation_pitch_d)
+            # Orientation - Yaw
+            self.setPidValues(self.pid_controller_yaw, config.orientation_yaw_p, config.orientation_yaw_i,
+                              config.orientation_yaw_d)
+
+        return config
+
 
     def createSwitchControllerRequest(self, start_controllers, stop_controllers):
         """
@@ -201,30 +313,38 @@ class AntropArmsPythonInterface(object):
         return switchControllerRequest
 
     def switchControllerCallback(self, selected_controller):
-        if selected_controller.data == "servo":
-            rospy.loginfo("Selected the servo controller, attempting to activate!")
-            switchToServoRequest = self.createSwitchControllerRequest(self.joint_position_controllers,
+        """
+        :param selected_controller:
+        """
+        if selected_controller.data == "servoPosition" or selected_controller.data == "servoVelocity" or selected_controller.data == "publishJoints":
+            rospy.loginfo("Selected the {} controller, attempting to activate!".format(selected_controller.data))
+            switchToJointsRequest = self.createSwitchControllerRequest(self.joint_position_controllers,
                                                                       self.follow_trajectory_controllers)
-            responseServo = self.switchControllerService(switchToServoRequest)
-            rospy.loginfo("The response for calling the servoRequest: {}".format(responseServo))
-            self.active_controller = "servo"
-            rospy.loginfo("Started controllers: {}".format(self.active_controller))
+            responseToJointsRequest = self.switchControllerService(switchToJointsRequest)
+            rospy.loginfo("The response for calling the joints request: {}".format(responseToJointsRequest))
+            self.robot_state = selected_controller.data
+            rospy.loginfo("Active robot state: {}".format(self.robot_state))
 
         elif selected_controller.data == "trajectory":
             rospy.loginfo("Selected the trajectory controller, attempting to activate!")
             switchToTrajectoryRequest = self.createSwitchControllerRequest(self.follow_trajectory_controllers,
                                                                            self.joint_position_controllers)
             responseTrajectory = self.switchControllerService(switchToTrajectoryRequest)
-            rospy.loginfo("The response for calling the servoRequest: {}".format(responseTrajectory))
-            self.active_controller = "trajectory"
-            rospy.loginfo("Started controllers: {}".format(self.active_controller))
+            rospy.loginfo("The response for calling the trajectoryRequest: {}".format(responseTrajectory))
+            self.robot_state = "trajectory"
+            rospy.loginfo("Started controllers for: {}".format(self.robot_state))
 
         else:
             rospy.logerr("Incorrect controller selected! Received: {}".format(selected_controller))
-            rospy.loginfo("The passed 'servo' is of type: {}".format(type(selected_controller)))
 
-    def poolReferencePose(self, reference):
-        self.reference_pose = reference
+    def poolReferencePose(self, reference_pose):
+        self.reference_pose = reference_pose
+
+    def poolReferenceVelocity(self, reference_velocity):
+        self.reference_velocity = reference_velocity
+
+    def poolReferenceJoints(self, input_reference_joints):
+        self.reference_joints = input_reference_joints
 
     def getCurrentJointStates(self):
         return self.group.get_current_joint_values()
@@ -372,6 +492,7 @@ class AntropArmsPythonInterface(object):
         self.group.go(wait=True)
         self.group.stop()
 
+
     def getIK(self, target_pose, current_joint_state):
         """
         :param target_pose: -> xyz position of the robot ee and xyzw quaternion orientation, a 7x1 array.
@@ -419,107 +540,132 @@ class AntropArmsPythonInterface(object):
         rospy.loginfo("Computed Jacobian matrix for the given joint state: {}".format(jacobianMatrix))
         return jacobianMatrix
 
+    def degreeToRadian(self, degree_value):
+        return float(degree_value.data) * pi / 180.0
+
     def servoCtl(self):
-        # TODO: Add all those methods for servo ctl
-        pass
+        """
+        :param currentRobotPose:
+        """
+        currentPose = self.getCurrentPose()
+        self.current_pose_publisher.publish(currentPose)
+        # Necessary overhead since it has to be calculated for each iteration?
+        currentJointState = self.getCurrentJointStates()
+        inverseJacobian = np.linalg.pinv(self.getJacobianMatrix(currentJointState))
+        # Fetch the current end effector RPY orientation; type: List (3x1)
+        currentEeOrientationRPY = self.group.get_current_rpy()
+        rospy.loginfo("Current RPY of the {} EE is: {}".format(self.group_name, currentEeOrientationRPY))
+        # Logging
+        rospy.loginfo("Reference pose: {}".format(self.reference_pose))
+        rospy.loginfo("Current pose: {}".format(currentPose))
+        # Fetching the reference pose and passing it to the PID controller
+        if not self.reference_pose == None and self.robot_state == "servoPosition":
+            # Calculate positional errors
+            # eePositionX = self.pid_controller_x.compute(self.reference_pose.positionEE.x, currentPose.position.x)
+            # eePositionY = self.pid_controller_y.compute(self.reference_pose.positionEE.y, currentPose.position.y)
+            # eePositionZ = self.pid_controller_z.compute(self.reference_pose.positionEE.z, currentPose.position.z)
+            eePositionX = self.pid_controller_x.compute(self.reference_pose.positionEE.x -0.275, currentPose.position.x)# -0.3, currentPose.position.x)
+            eePositionY = self.pid_controller_y.compute(self.reference_pose.positionEE.y -0.175, currentPose.position.y) #+0.175, currentPose.position.y)
+            eePositionZ = self.pid_controller_z.compute(self.reference_pose.positionEE.z +1.225, currentPose.position.z) #+1.375, currentPose.position.z)
+
+            # referenceEeOrientationRPY = [1.2073214672240564, -0.22176909762495434, -1.207390444292618]
+            # Calculate orientation errors
+            # eeRollOrientation = self.pid_controller_roll.compute(referenceEeOrientationRPY[0], currentEeOrientationRPY[0])
+            # eePitchOrientation = self.pid_controller_pitch.compute(referenceEeOrientationRPY[1], currentEeOrientationRPY[1])
+            # eeYawOrientation = self.pid_controller_yaw.compute(referenceEeOrientationRPY[2], currentEeOrientationRPY[2])
+            # Logging
+            rospy.loginfo("This is what the normal subtraction shows:{}".format(
+                self.reference_pose.positionEE.x - currentPose.position.x))
+            rospy.loginfo("EE Position error x: {}".format(eePositionX))
+            eeVelocityVector = np.array(
+                [eePositionX, eePositionY, eePositionZ, 0, 0, 0])
+            rospy.loginfo("EE velocity vector: {}".format(eeVelocityVector))
+            jointVelocity = np.dot(inverseJacobian, eeVelocityVector)
+            rospy.loginfo("Joint velocity vector: {}".format(jointVelocity))
+            # Calculate the delta joint state
+            newJointState = jointVelocity #np.dot(jointVelocity, self.delta_T)
+            # newJointState = jointVelocity
+            # Publish the calculated deltaJointStates + currentJointState in order to move to target ee position
+            rospy.loginfo("Publishing to joints!")
+            if self.group_name == "left_arm":
+                self.left_arm_shoulder_pitch.publish(currentJointState[0] + newJointState[0])
+                self.left_arm_shoulder.publish(currentJointState[1] + newJointState[1])
+                self.left_arm_shoulder_elbow.publish(currentJointState[2] + newJointState[2])
+                self.left_arm_elbow_forearm.publish(currentJointState[3] + newJointState[3])
+            else:
+                self.right_arm_shoulder_pitch.publish(currentJointState[0] + newJointState[0])
+                self.right_arm_shoulder.publish(currentJointState[1] + newJointState[1])
+                self.right_arm_shoulder_elbow.publish(currentJointState[2] + newJointState[2])
+                self.right_arm_elbow_forearm.publish(currentJointState[3] + newJointState[3])
+
+
+        elif not self.reference_pose == None and self.robot_state == "servoVelocity":
+            formattedVelocityVector = [self.reference_pose.velocityEE.x, self.reference_pose.velocityEE.y, self.reference_pose.velocityEE.z, 0, 0, 0]
+            jointVelocityRV = np.dot(inverseJacobian, formattedVelocityVector)
+            newJointStateRV = np.dot(jointVelocityRV, self.delta_T)
+            rospy.loginfo("Publishing to joints!")
+            if self.group_name == "left_arm":
+                self.left_arm_shoulder_pitch.publish(newJointStateRV[0])
+                self.left_arm_shoulder.publish(newJointStateRV[1])
+                self.left_arm_shoulder_elbow.publish(newJointStateRV[2])
+                self.left_arm_elbow_forearm.publish(newJointStateRV[3])
+            else:
+                self.right_arm_shoulder_pitch.publish(newJointStateRV[0])
+                self.right_arm_shoulder.publish(newJointStateRV[1])
+                self.right_arm_shoulder_elbow.publish(newJointStateRV[2])
+                self.right_arm_elbow_forearm.publish(newJointStateRV[3])
+
+        else:
+            rospy.logwarn("No reference given!")
+
+    def jointCtl(self):
+        rospy.loginfo("Attempting to publish the reference joints!")
+        if self.group_name == "left_arm":
+            self.left_arm_shoulder_pitch.publish(self.degreeToRadian(self.reference_joints.shoulder_pitch)*(-1.0))
+            self.left_arm_shoulder.publish(self.degreeToRadian(self.reference_joints.shoulder_roll)*(-1.0))
+            self.left_arm_shoulder_elbow.publish((self.degreeToRadian(self.reference_joints.shoulder_yaw))*(1.0))
+            self.left_arm_elbow_forearm.publish(self.degreeToRadian(self.reference_joints.elbow)*(1.0))
+        else:
+            self.right_arm_shoulder_pitch.publish(self.degreeToRadian(self.reference_joints.shoulder_pitch)*(1.0))
+            self.right_arm_shoulder.publish(self.degreeToRadian(self.reference_joints.shoulder_roll)*(1.0))
+            self.right_arm_shoulder_elbow.publish(self.degreeToRadian(self.reference_joints.shoulder_yaw)*(1.0))
+            self.right_arm_elbow_forearm.publish(self.degreeToRadian(self.reference_joints.elbow)*(1.0))
+
 
     def run(self):
         """
         """
         try:
+            rospy.loginfo("Starting the AntropArmsPythonInterface!")
+            rospy.loginfo("Initiated with {} robot state.".format(self.robot_state))
+
             while not rospy.is_shutdown():
-                rospy.loginfo("Starting the AntropArmsPythonInterface!")
-                # TODO: Keep the subscribers running! Update: When spin() is on it doesn't work?
-                # rospy.spin()
-                rospy.loginfo("Currently activated controller: {}".format(self.active_controller))
-                testCurrentJointStates = self.getCurrentJointStates()
-                startTime = time.time()
-                self.getJacobianMatrix(testCurrentJointStates)
-                endTime = time.time()
-                elapsed = endTime - startTime
-                rospy.loginfo("Elapsed time: {}".format(elapsed))
-                currentPose = self.getCurrentPose()
-                self.current_pose_publisher.publish(currentPose)
-                if self.active_controller == "servo":
-                    # Necessary overhead since it has to be calculated for each iteration?
-                    currentJointState = self.getCurrentJointStates()
-                    inverseJacobian = np.linalg.pinv(self.getJacobianMatrix(currentJointState))
-                    # Publishing the current ee pose!
+                # Publish current pose irregardless of the currently active robot state!
+                # Enter corresponding operation mode depending on robot state!
+                if self.robot_state == "servoPosition" or self.robot_state == "servoVelocity":
+                    self.servoCtl()
 
-                    formattedCurrentPose = np.array(
-                        [currentPose.position.x, currentPose.position.y, currentPose.position.z,
-                         currentPose.orientation.x, currentPose.orientation.y,
-                         currentPose.orientation.z, currentPose.orientation.w])
-                    rospy.loginfo("Current pose: {}".format(currentPose))
-                    # print("Current pose position: {}".format(currentPose.position))
+                elif self.robot_state == "trajectory":
+                    rospy.loginfo("Currently trajectory is not handled! Switch to servo.")
+                    currentPose = self.getCurrentPose()
+                    self.current_pose_publisher.publish(currentPose)
+                    currentEeOrientationRPY = self.group.get_current_rpy()
+                    rospy.loginfo("Current PID value: {}".format(self.pid_controller_x.get_kp()))
+                    rospy.loginfo("Current EE pose: {}".format(currentPose))
+                    rospy.loginfo("Current RPY of the EE is: {}".format(currentEeOrientationRPY))
+                    rospy.loginfo("Joint list for selected move group: {}".format(self.joint_list))
+                    if self.reference_pose != None:
+                        rospy.logwarn("The position x value: {}".format(self.reference_pose.position.x))
+                        rospy.logwarn(self.reference_pose)
+                    pass
 
-                    # Fetching the reference pose and passing it to the PID controller
-                    if not self.reference_pose == None:
-                        formattedReferecePose = np.array(
-                            [self.reference_pose.position.x, self.reference_pose.position.y,
-                             self.reference_pose.position.z,
-                             self.reference_pose.orientation.x, self.reference_pose.orientation.y,
-                             self.reference_pose.orientation.z, self.reference_pose.orientation.w])
-                        # Calculate positional errors
-                        eePositionX = self.pid_controller_x.compute(formattedReferecePose[0],
-                                                                    formattedCurrentPose[0])
-                        eePositionY = self.pid_controller_y.compute(formattedReferecePose[1],
-                                                                    formattedCurrentPose[1])
-                        eePositionZ = self.pid_controller_z.compute(formattedReferecePose[2],
-                                                                    formattedCurrentPose[2])
-                        # Logging
-                        rospy.loginfo("This is what the normal subtraction shows:{}".format(
-                            formattedReferecePose - formattedCurrentPose))
-                        rospy.loginfo("EE Position error x: {}".format(eePositionX))
-                        rospy.loginfo("EE Position error y: {}".format(eePositionY))
-                        rospy.loginfo("EE Position error z: {}".format(eePositionZ))
-                        # TODO: Remove the hard coded orientation down the line
-                        eeVelocityVector = np.array([eePositionX, eePositionY, eePositionZ, 0, 0, 0])
-                        rospy.loginfo("EE velocity vector: {}".format(eeVelocityVector))
-                        jointVelocity = np.dot(inverseJacobian, eeVelocityVector)
-                        rospy.loginfo("Joint velocity vector: {}".format(jointVelocity))
-                        # Calculate the delta joint state
-                        newJointState = np.dot(jointVelocity, self.deltaT)
-                        # TODO: Add code for passing the joint states!
-                        self.left_arm_shoulder.publish(newJointState[0])
-                        self.left_arm_shoulder_pitch.publish(newJointState[1])
-                        self.left_arm_shoulder_elbow.publish(newJointState[2])
-                        self.left_arm_elbow_forearm.publish(newJointState[3])
-
-                    else:
-                        rospy.logwarn("No reference given!")
-
-                elif self.active_controller == "trajectory":
-                    rospy.loginfo("Again entering trajectory!")
-
-                    if self.active_controller == "trajectory":
-                        rospy.loginfo("Still no trajectory implemented, switch to servo!")
-                        pass
+                elif not self.reference_joints == None and self.robot_state == "publishJoints":
+                    self.jointCtl()
 
                 else:
-                    rospy.logerr("The active controller: {}, isn't defined!".format(self.active_controller))
+                    rospy.logwarn("The active controller: {}, isn't defined, or no reference passed yet!!".format(self.robot_state))
 
                 self.rate.sleep()
-
-            # achievableJointState = [-0.2918368955004258, -0.06868186235263263, -0.194198852046922, 1.8693671028963053]
-            # Forward kinematics
-            # self.getFK(achievableJointState)
-            # Move by feeding joint states
-            # self.moveToJointStateGoal(achievableJointState)
-            # self.getCurrentPose()
-            # testCurrentJointStates = self.getCurrentJointStates()
-            # Working pose for "left_arm" group:
-            # Position: x=-0.3196075296701223, y=0.36576859700616704, z=1.2952693892762086
-            # Orientation: x=0.1446269355378438, y=0.10098839507898862, z=-0.13750360498404174, w=0.9746677137325802
-            # position = [-0.3196075296701223, 0.36576859700616704, 1.2952693892762086, 0.1446269355378438, 0.10098839507898862,
-            #            -0.13750360498404174, 0.9746677137325802]
-            # Inverse kinematics
-            # self.getIK(position, testCurrentJointStates)
-            # Move by feeding end-effector pose
-            # self.moveToCartesianPose(position)
-            # self.moveToCartesianPose(position)  # Second one just in case the first planning fails until attempts are added!
-            # self.getCurrentPose()
-
 
         except Exception as e:
             rospy.logerr("Failed during run() method execution: {}".format(e))
@@ -530,5 +676,6 @@ class AntropArmsPythonInterface(object):
 
 
 if __name__ == '__main__':
-    testing = AntropArmsPythonInterface()
+    # testing = AntropArmsPythonInterface(sys.argv[1])
+    testing = AntropArmsPythonInterface("right_arm")
     testing.run()
